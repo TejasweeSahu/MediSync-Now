@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from '@/components/ui/button';
+// Removed Button import as it's no longer used for an extra button in the dialog
 
 // Helper to determine if a route is protected
 const PROTECTED_ROUTES_PREFIX = ['/dashboard'];
@@ -32,35 +32,31 @@ const isSafePublicRoute = (pathname: string | null): boolean => {
 export const AppShell = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
-  const currentPathname = usePathname(); // Current actual path from Next.js router
+  const currentPathname = usePathname(); 
   const previousPathnameRef = useRef<string | null>(currentPathname);
 
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [logoutTrigger, setLogoutTrigger] = useState<'header' | 'back_navigation'>('header');
   const [intendedNavigationPath, setIntendedNavigationPath] = useState<string | null>(null);
 
-  // Update previousPathnameRef whenever currentPathname changes
   useEffect(() => {
     previousPathnameRef.current = currentPathname;
   }, [currentPathname]);
 
   useEffect(() => {
     const handlePopState = () => {
-      const newPathname = window.location.pathname; // Path after popstate event
+      const newPathname = window.location.pathname; 
 
       if (
         isAuthenticated &&
-        isProtectedRoute(previousPathnameRef.current) && // Was on a protected route
-        !isProtectedRoute(newPathname) && // Navigating to a non-protected route
-        isSafePublicRoute(newPathname) // Specifically one we expect when logging out/going home
+        isProtectedRoute(previousPathnameRef.current) && 
+        !isProtectedRoute(newPathname) && 
+        isSafePublicRoute(newPathname) 
       ) {
         setLogoutTrigger('back_navigation');
-        setIntendedNavigationPath(newPathname); // Store where the browser tried to go
+        setIntendedNavigationPath(newPathname); 
         setIsLogoutConfirmOpen(true);
         
-        // IMPORTANT: Prevent the back navigation from completing visually by pushing
-        // the user back to the page they were on.
-        // This needs to be done carefully.
         if (previousPathnameRef.current) {
           router.push(previousPathnameRef.current, { scroll: false });
         }
@@ -71,36 +67,27 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isAuthenticated, router, logout]); // currentPathname change is handled by previousPathnameRef update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, router]); 
 
   const handleConfirmLogout = async () => {
     await logout();
     setIsLogoutConfirmOpen(false);
     if (logoutTrigger === 'back_navigation' && intendedNavigationPath) {
-      router.push(intendedNavigationPath); // Go to the page they originally intended via back button
+      router.push(intendedNavigationPath); 
     } else {
-      router.push('/login'); // Default for header-triggered logout
+      router.push('/login'); 
     }
   };
 
   const handleCancelLogoutDialog = () => {
     setIsLogoutConfirmOpen(false);
-    // If triggered by 'back_navigation', the router.push in handlePopState already
-    // kept them on the previous page. So, "Cancel" means they stay there.
   };
   
-  const handleLeaveWithoutLoggingOut = () => {
-    setIsLogoutConfirmOpen(false);
-    if (logoutTrigger === 'back_navigation' && intendedNavigationPath) {
-      // Allow the original back navigation to proceed.
-      // Use replace to avoid adding another entry for the "paused" page to history.
-      router.replace(intendedNavigationPath);
-    }
-  };
+  // handleLeaveWithoutLoggingOut is no longer needed.
 
   const openHeaderLogoutConfirm = () => {
     setLogoutTrigger('header');
-    // For header logout, intended path after logout is usually /login
     setIntendedNavigationPath('/login'); 
     setIsLogoutConfirmOpen(true);
   };
@@ -126,13 +113,9 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelLogoutDialog}>Cancel</AlertDialogCancel>
-            {logoutTrigger === 'back_navigation' && (
-                 <Button variant="outline" onClick={handleLeaveWithoutLoggingOut}>
-                    Leave Without Logging Out
-                 </Button>
-            )}
+            {/* The "Leave Without Logging Out" button is removed */}
             <AlertDialogAction onClick={handleConfirmLogout}>
-              {logoutTrigger === 'back_navigation' ? 'Logout & Leave' : 'Logout'}
+              Logout {/* Standardized button text */}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

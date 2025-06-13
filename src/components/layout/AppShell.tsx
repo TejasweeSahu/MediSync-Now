@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Header }_from './Header';
+import { Header } from './Header';
 import { Logo } from '@/components/shared/Logo';
 import { LayoutDashboard, Users, Mic, LogOut } from 'lucide-react';
 import { Button } from '../ui/button';

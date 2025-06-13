@@ -15,6 +15,8 @@ const SuggestPrescriptionInputSchema = z.object({
   symptoms: z.string().describe('The symptoms presented by the patient.'),
   diagnosis: z.string().describe('The diagnosis of the patient.'),
   patientHistory: z.string().optional().describe('The medical history of the patient, if available.'),
+  doctorName: z.string().optional().describe("The name of the doctor for whom this suggestion is being generated."),
+  doctorPreferences: z.string().optional().describe('Specific prescribing preferences or common patterns for this doctor, if known.'),
 });
 export type SuggestPrescriptionInput = z.infer<typeof SuggestPrescriptionInputSchema>;
 
@@ -32,11 +34,17 @@ const prompt = ai.definePrompt({
   name: 'suggestPrescriptionPrompt',
   input: {schema: SuggestPrescriptionInputSchema},
   output: {schema: SuggestPrescriptionOutputSchema},
-  prompt: `You are an AI assistant specialized in suggesting prescriptions for doctors. Given the patient's symptoms, diagnosis, and medical history, suggest an appropriate prescription.
+  prompt: `You are an AI assistant specialized in suggesting prescriptions for {{#if doctorName}}Dr. {{{doctorName}}}{{else}}the attending doctor{{/if}}.
+Given the patient's symptoms, diagnosis, and medical history, suggest an appropriate prescription.
 
 Symptoms: {{{symptoms}}}
 Diagnosis: {{{diagnosis}}}
 Patient History: {{{patientHistory}}}
+
+{{#if doctorPreferences}}
+Please also consider the following known preferences or common prescribing patterns for this doctor:
+{{{doctorPreferences}}}
+{{/if}}
 
 Consider any potential allergies, interactions, or contraindications when formulating the suggestion. Provide clear and concise instructions for the prescription, including dosage and frequency.
 

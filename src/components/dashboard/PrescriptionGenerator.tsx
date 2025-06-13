@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from '@/components/ui/form'; // Renamed to avoid conflict
-import { Label } from '@/components/ui/label'; // Import the base Label component
-import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
+import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput, MedicationDetail } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
@@ -155,7 +155,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   };
 
   const handleSavePrescription = async () => {
-    if (!selectedPatient || !editedSuggestion || !currentSuggestionData) { // Ensure currentSuggestionData for symptoms/diagnosis
+    if (!selectedPatient || !editedSuggestion || !currentSuggestionData) {
       toast({
         title: "Cannot Save",
         description: "No patient selected or no suggestion available/edited.",
@@ -190,9 +190,9 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       }
 
       const prescriptionText = formatPrescriptionForSaving(
-        editedSuggestion, // Use the edited suggestion
-        currentSuggestionData.symptoms, // Original symptoms from when AI was called
-        currentSuggestionData.diagnosis // Original diagnosis from when AI was called
+        editedSuggestion, 
+        currentSuggestionData.symptoms, 
+        currentSuggestionData.diagnosis 
       );
       await addPrescriptionToPatient(patientToUse.id, prescriptionText);
       
@@ -245,6 +245,22 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     setEditedSuggestion(prev => {
       if (!prev) return null;
       return { ...prev, [fieldName]: value };
+    });
+  };
+
+  const handleAddMedication = () => {
+    setEditedSuggestion(prev => {
+      if (!prev) return null;
+      const newMedication: MedicationDetail = {
+        name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        route: '',
+        additionalInstructions: ''
+      };
+      const updatedMedications = prev.medications ? [...prev.medications, newMedication] : [newMedication];
+      return { ...prev, medications: updatedMedications };
     });
   };
 
@@ -306,7 +322,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="symptoms"
               render={({ field }) => (
                 <FormItem>
-                  <RHFFormLabel>Current Symptoms (for AI suggestion)</RHFFormLabel>
+                  <Label>Current Symptoms (for AI suggestion)</Label>
                   <FormControl>
                     <Textarea placeholder="e.g., Persistent cough, fever, headache for 3 days..." {...field} rows={3} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -319,7 +335,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="diagnosis"
               render={({ field }) => (
                 <FormItem>
-                  <RHFFormLabel>Underlying/Confirmed Diagnosis</RHFFormLabel>
+                  <Label>Underlying/Confirmed Diagnosis</Label>
                   <FormControl>
                     <Input placeholder="e.g., Acute Bronchitis" {...field} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -332,7 +348,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="patientHistory"
               render={({ field }) => (
                 <FormItem>
-                  <RHFFormLabel>Relevant Patient History (Optional)</RHFFormLabel>
+                  <Label>Relevant Patient History (Optional)</Label>
                   <FormControl>
                     <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
                   </FormControl>
@@ -359,9 +375,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
           <h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><FileText className="text-accent" /> Current AI Suggestion (Editable)</h3>
             <div className="space-y-6 p-4 bg-muted/50 rounded-lg">
               
-              {editedSuggestion.medications && editedSuggestion.medications.length > 0 ? (
-                <div>
-                  <strong className="block text-md font-medium text-foreground mb-2">Medications:</strong>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <strong className="block text-md font-medium text-foreground">Medications:</strong>
+                  <Button variant="outline" size="sm" onClick={handleAddMedication} className="h-8">
+                    <PlusCircle size={16} className="mr-2" /> Add Medication
+                  </Button>
+                </div>
+                {editedSuggestion.medications && editedSuggestion.medications.length > 0 ? (
                   <ul className="space-y-4 list-inside">
                     {editedSuggestion.medications.map((med, index) => (
                       <li key={index} className="p-4 border rounded-md bg-background shadow-sm space-y-3">
@@ -425,16 +446,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                       </li>
                     ))}
                   </ul>
-                </div>
-              ) : (
-                <Alert variant="default">
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>No Medications Suggested</AlertTitle>
-                  <AlertDescription>
-                    The AI did not suggest specific medications based on the input. This might be appropriate, or further details may be needed. Check "Additional Notes" for more context.
-                  </AlertDescription>
-                </Alert>
-              )}
+                 ) : (
+                  <Alert variant="default" className="mt-2">
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>No Medications Added</AlertTitle>
+                    <AlertDescription>
+                      Click "Add Medication" to manually enter prescription details, or generate an AI suggestion.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
 
               <div>
                 <Label className="block text-md font-medium text-foreground mb-1">General Instructions (Optional)</Label>
@@ -488,7 +509,4 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   );
 };
 
-
-    
-
-    
+      

@@ -112,18 +112,18 @@ export default function DashboardPage() {
           <div className="lg:col-span-1 space-y-6">
             <UpcomingAppointments onAppointmentSelect={handleAppointmentClick} />
           </div>
-          <div className="lg:col-span-2 space-y-6">
-            <PatientList onSelectPatient={handleSelectPatientAndScroll} />
+          <div className="lg:col-span-2 space-y-6" ref={prescriptionSectionRef}>
+            <PrescriptionGenerator 
+              selectedPatient={selectedPatient}
+              onPatientRecordUpdated={handlePatientRecordUpdate} 
+            />
           </div>
         </div>
 
         <Separator className="my-8" />
         
-        <div ref={prescriptionSectionRef}>
-          <PrescriptionGenerator 
-            selectedPatient={selectedPatient}
-            onPatientRecordUpdated={handlePatientRecordUpdate} 
-          />
+        <div>
+          <PatientList onSelectPatient={handleSelectPatientAndScroll} />
         </div>
 
       </div>

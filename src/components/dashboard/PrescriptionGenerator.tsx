@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Label } from '@/components/ui/label';
-import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle, Trash2 } from 'lucide-react';
+import { Label } from '@/components/ui/label'; // Changed from FormLabel
+import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle, Trash2, XCircle } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput, MedicationDetail } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
@@ -330,7 +330,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="symptoms"
               render={({ field }) => (
                 <FormItem>
-                  <Label>Current Symptoms (for AI suggestion)</Label>
+                  <Label className="font-medium">Current Symptoms (for AI suggestion)</Label>
                   <FormControl>
                     <Textarea placeholder="e.g., Persistent cough, fever, headache for 3 days..." {...field} rows={3} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -343,7 +343,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="diagnosis"
               render={({ field }) => (
                 <FormItem>
-                  <Label>Underlying/Confirmed Diagnosis</Label>
+                  <Label className="font-medium">Underlying/Confirmed Diagnosis</Label>
                   <FormControl>
                     <Input placeholder="e.g., Acute Bronchitis" {...field} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -356,7 +356,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="patientHistory"
               render={({ field }) => (
                 <FormItem>
-                  <Label>Relevant Patient History (Optional)</Label>
+                  <Label className="font-medium">Relevant Patient History (Optional)</Label>
                   <FormControl>
                     <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
                   </FormControl>
@@ -385,7 +385,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <strong className="block text-md font-medium text-foreground">Medications:</strong>
+                  <Label className="block text-md font-medium text-foreground">Medications:</Label>
                   <Button variant="outline" size="sm" onClick={handleAddMedication} className="h-8">
                     <PlusCircle size={16} className="mr-2" /> Add Medication
                   </Button>
@@ -475,7 +475,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               </div>
 
               <div>
-                <Label className="block text-md font-medium text-foreground mb-1">General Instructions (Optional)</Label>
+                <div className="flex justify-between items-center mb-1">
+                    <Label className="block text-md font-medium text-foreground">General Instructions (Optional)</Label>
+                    {editedSuggestion.generalInstructions && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleGenericFieldChange('generalInstructions', '')} aria-label="Clear general instructions">
+                            <XCircle size={16} />
+                        </Button>
+                    )}
+                </div>
                 <Textarea 
                     value={editedSuggestion.generalInstructions || ''} 
                     onChange={(e) => handleGenericFieldChange('generalInstructions', e.target.value)}
@@ -486,7 +493,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               </div>
               
               <div>
-                <Label className="block text-md font-medium text-foreground mb-1">Follow Up (Optional)</Label>
+                <div className="flex justify-between items-center mb-1">
+                    <Label className="block text-md font-medium text-foreground">Follow Up (Optional)</Label>
+                    {editedSuggestion.followUp && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleGenericFieldChange('followUp', '')} aria-label="Clear follow up">
+                            <XCircle size={16} />
+                        </Button>
+                    )}
+                </div>
                 <Textarea 
                     value={editedSuggestion.followUp || ''} 
                     onChange={(e) => handleGenericFieldChange('followUp', e.target.value)}
@@ -497,8 +511,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               </div>
 
               <Alert variant={editedSuggestion.medications && editedSuggestion.medications.length > 0 ? "default" : "destructive"}>
+                <div className="flex justify-between items-center">
+                    <AlertTitle>Additional Notes for Doctor (Optional)</AlertTitle>
+                    {editedSuggestion.additionalNotes && (
+                         <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 -mt-1 text-muted-foreground group-[.destructive]:text-destructive-foreground/70 hover:text-destructive group-[.destructive]:hover:text-destructive-foreground" onClick={() => handleGenericFieldChange('additionalNotes', '')} aria-label="Clear additional notes">
+                            <XCircle size={16} />
+                        </Button>
+                    )}
+                </div>
                 {editedSuggestion.medications && editedSuggestion.medications.length > 0 ? <Info className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                <AlertTitle>Additional Notes for Doctor (Optional)</AlertTitle>
+                
                 <Textarea 
                     value={editedSuggestion.additionalNotes || ''} 
                     onChange={(e) => handleGenericFieldChange('additionalNotes', e.target.value)}
@@ -525,5 +547,3 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
-
-      

@@ -65,10 +65,10 @@ export default function DashboardPage() {
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      console.warn(\`Patient with name "\${patientName}" not found in records. Creating temporary patient object.\`);
+      console.warn('Patient with name "' + patientName + '" not found in records. Creating temporary patient object.');
       
       const temporaryPatient: Patient = {
-        id: \`temp-appointment-\${appointment.id}\`, 
+        id: 'temp-appointment-' + appointment.id, 
         name: appointment.patientName,
         age: appointment.patientAge !== undefined ? appointment.patientAge : 0, 
         diagnosis: appointment.symptoms || 'Awaiting diagnosis', 
@@ -79,7 +79,7 @@ export default function DashboardPage() {
       handleSelectPatientAndScroll(temporaryPatient);
       toast({
         title: "Temporary Patient Loaded",
-        description: \`Details for \${appointment.patientName} loaded from appointment. This is a temporary view; save a prescription to create a permanent record.\`,
+        description: `Details for ${appointment.patientName} loaded from appointment. This is a temporary view; save a prescription to create a permanent record.`,
         variant: "default",
       });
     }

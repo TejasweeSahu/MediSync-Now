@@ -223,7 +223,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processTranscriptWithAI, toast, toggleListening]); 
+  }, [processTranscriptWithAI, toast]); 
 
 
   const capitalizeFirstLetter = (string: string) => {
@@ -275,8 +275,8 @@ export const VoiceAppointmentForm: React.FC = () => {
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-            <Mic className="text-primary" /> Voice Appointment Booking
+          <CardTitle className="text-2xl font-headline">
+            Voice Appointment Booking
           </CardTitle>
           <CardDescription>Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
         </div>
@@ -307,7 +307,7 @@ export const VoiceAppointmentForm: React.FC = () => {
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6 pt-6"> {/* Added pt-6 to CardContent as header has default p-6 */}
+          <CardContent className="space-y-6 pt-6">
             {!speechApiAvailable && <p className="text-sm text-destructive text-center">Speech recognition not available in this browser.</p>}
             {transcript && (
               <p className="text-sm text-muted-foreground italic text-center">Transcript: "{transcript}"</p>
@@ -485,4 +485,3 @@ export const VoiceAppointmentForm: React.FC = () => {
   );
 };
     
-

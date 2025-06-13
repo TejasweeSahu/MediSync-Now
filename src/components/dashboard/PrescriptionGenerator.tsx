@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, FileText, Pill } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Pill, Save } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAppState } from '@/hooks/useAppState'; // Import useAppState
 
 const formSchema = z.object({
   symptoms: z.string().min(10, { message: "Symptoms must be at least 10 characters." }),
@@ -33,6 +34,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestPrescriptionOutput | null>(null);
   const { toast } = useToast();
+  const { addPrescriptionToPatient, patients: allPatients } = useAppState(); // Get context functions and all patients
 
   const form = useForm<PrescriptionFormValues>({
     resolver: zodResolver(formSchema),
@@ -89,12 +91,36 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   };
   
   const handleSavePrescription = () => {
-    // Simulate saving prescription
-    console.log("Prescription saved (simulated):", suggestion);
-    toast({
-      title: "Prescription Saved",
-      description: "The suggested prescription has been saved (simulated).",
-    });
+    if (!selectedPatient || !selectedPatient.id || !suggestion) {
+      toast({
+        title: "Cannot Save",
+        description: "No patient selected or no suggestion generated.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const prescriptionText = `${suggestion.prescriptionSuggestion}${suggestion.additionalNotes ? `\n\nAdditional Notes:\n${suggestion.additionalNotes}` : ''}`;
+
+    // Check if the selected patient is a "real" patient from the AppStateContext's list
+    const isRealPatient = allPatients.some(p => p.id === selectedPatient.id);
+
+    if (isRealPatient) {
+      addPrescriptionToPatient(selectedPatient.id, prescriptionText);
+      toast({
+        title: "Prescription Saved",
+        description: `The prescription has been saved to ${selectedPatient.name}'s record.`,
+        className: "bg-primary text-primary-foreground",
+      });
+    } else {
+      // This is a temporary patient, loaded from an appointment but not in main records
+      console.log("Prescription for temporary patient (simulated save):", selectedPatient.name, prescriptionText);
+      toast({
+        title: "Prescription Noted (Temporary Patient)",
+        description: `Prescription for ${selectedPatient.name} noted. Add patient to records for permanent save.`,
+        variant: "default", // Using default variant for this info message
+      });
+    }
   };
 
   return (
@@ -116,6 +142,9 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <AlertTitle className="font-medium">Patient: {selectedPatient.name}</AlertTitle>
                 <AlertDescription>
                   Age: {selectedPatient.age}, Diagnosis: {selectedPatient.diagnosis}
+                  {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
+                    <span className="block mt-1 text-xs">({selectedPatient.prescriptions.length} prior prescription(s) on record)</span>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -186,8 +215,9 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <p className="text-foreground whitespace-pre-wrap">{suggestion.additionalNotes}</p>
               </div>
             )}
-             <Button onClick={handleSavePrescription} className="mt-4">
-                Save Prescription (Simulated)
+             <Button onClick={handleSavePrescription} className="mt-4" disabled={!selectedPatient || !suggestion}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Prescription
               </Button>
           </div>
         </CardContent>

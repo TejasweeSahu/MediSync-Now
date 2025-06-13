@@ -1,3 +1,4 @@
+
 export interface Patient {
   id: string;
   name: string;
@@ -5,6 +6,7 @@ export interface Patient {
   diagnosis: string;
   history: string;
   avatarUrl?: string;
+  prescriptions?: string[]; // Added to store prescription texts
 }
 
 export interface Appointment {

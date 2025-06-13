@@ -8,6 +8,7 @@ import { mockPatients } from '@/data/mockData';
 interface AppStateContextType {
   patients: Patient[];
   updatePatient: (updatedPatient: Patient) => void;
+  addPrescriptionToPatient: (patientId: string, prescriptionText: string) => void; // New function
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status'>) => void;
   updateAppointmentStatus: (appointmentId: string, status: Appointment['status']) => void;
@@ -23,6 +24,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const updatePatient = useCallback((updatedPatient: Patient) => {
     setPatients((prevPatients) =>
       prevPatients.map((p) => (p.id === updatedPatient.id ? updatedPatient : p))
+    );
+  }, []);
+
+  const addPrescriptionToPatient = useCallback((patientId: string, prescriptionText: string) => {
+    setPatients((prevPatients) =>
+      prevPatients.map((p) =>
+        p.id === patientId
+          ? {
+              ...p,
+              prescriptions: [...(p.prescriptions || []), prescriptionText],
+            }
+          : p
+      )
     );
   }, []);
 
@@ -50,7 +64,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   }, [appointments]);
 
   return (
-    <AppStateContext.Provider value={{ patients, updatePatient, appointments, addAppointment, updateAppointmentStatus, getAppointmentsForDoctor }}>
+    <AppStateContext.Provider value={{ patients, updatePatient, addPrescriptionToPatient, appointments, addAppointment, updateAppointmentStatus, getAppointmentsForDoctor }}>
       {children}
     </AppStateContext.Provider>
   );

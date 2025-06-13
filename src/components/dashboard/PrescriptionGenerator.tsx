@@ -310,7 +310,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                   <ul className="space-y-3 list-inside">
                     {suggestion.medications.map((med, index) => (
                       <li key={index} className="p-3 border rounded-md bg-background shadow-sm">
-                        <p className="font-semibold text-primary">{med.name} {med.dosage} {med.route && <Badge variant="outline" className="ml-1">{med.route}</Badge>}</p>
+                        <div className="font-semibold text-primary">{med.name} {med.dosage} {med.route && <Badge variant="outline" className="ml-1">{med.route}</Badge>}</div>
                         <p className="text-sm text-muted-foreground">Frequency: {med.frequency}</p>
                         {med.duration && <p className="text-sm text-muted-foreground">Duration: {med.duration}</p>}
                         {med.additionalInstructions && <p className="text-sm text-muted-foreground mt-1"><Info size={12} className="inline mr-1"/> {med.additionalInstructions}</p>}

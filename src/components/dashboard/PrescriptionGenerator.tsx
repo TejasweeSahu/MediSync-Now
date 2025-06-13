@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel as RHFFormLabel, FormMessage } from '@/components/ui/form'; // Renamed to avoid conflict
+import { Label } from '@/components/ui/label'; // Import the base Label component
 import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput, MedicationDetail } from '@/ai/flows/suggest-prescription';
@@ -175,7 +176,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
             setIsSaving(false);
             return;
         }
-        const newSavedPatient = await addPatient(patientDataToSave as Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]});
+        const newSavedPatient = await addPatient(patientDataToSave as Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]});
         patientToUse = newSavedPatient;
         await refreshPatients(); 
         if (onPatientRecordUpdated) {
@@ -305,7 +306,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="symptoms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Symptoms (for AI suggestion)</FormLabel>
+                  <RHFFormLabel>Current Symptoms (for AI suggestion)</RHFFormLabel>
                   <FormControl>
                     <Textarea placeholder="e.g., Persistent cough, fever, headache for 3 days..." {...field} rows={3} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -318,7 +319,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="diagnosis"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Underlying/Confirmed Diagnosis</FormLabel>
+                  <RHFFormLabel>Underlying/Confirmed Diagnosis</RHFFormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Acute Bronchitis" {...field} disabled={isAISuggesting || isSaving} />
                   </FormControl>
@@ -331,7 +332,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               name="patientHistory"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Relevant Patient History (Optional)</FormLabel>
+                  <RHFFormLabel>Relevant Patient History (Optional)</RHFFormLabel>
                   <FormControl>
                     <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
                   </FormControl>
@@ -366,7 +367,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                       <li key={index} className="p-4 border rounded-md bg-background shadow-sm space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormItem>
-                            <FormLabel className="text-xs">Name</FormLabel>
+                            <Label className="text-xs">Name</Label>
                             <Input 
                               value={med.name || ''} 
                               onChange={(e) => handleMedicationFieldChange(index, 'name', e.target.value)}
@@ -375,7 +376,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                             />
                           </FormItem>
                           <FormItem>
-                            <FormLabel className="text-xs">Dosage</FormLabel>
+                            <Label className="text-xs">Dosage</Label>
                             <Input 
                               value={med.dosage || ''} 
                               onChange={(e) => handleMedicationFieldChange(index, 'dosage', e.target.value)}
@@ -384,7 +385,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                             />
                           </FormItem>
                           <FormItem>
-                            <FormLabel className="text-xs">Frequency</FormLabel>
+                            <Label className="text-xs">Frequency</Label>
                             <Input 
                               value={med.frequency || ''} 
                               onChange={(e) => handleMedicationFieldChange(index, 'frequency', e.target.value)}
@@ -393,7 +394,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                             />
                           </FormItem>
                           <FormItem>
-                            <FormLabel className="text-xs">Duration (Optional)</FormLabel>
+                            <Label className="text-xs">Duration (Optional)</Label>
                             <Input 
                               value={med.duration || ''} 
                               onChange={(e) => handleMedicationFieldChange(index, 'duration', e.target.value)}
@@ -402,7 +403,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                             />
                           </FormItem>
                           <FormItem>
-                            <FormLabel className="text-xs">Route (Optional)</FormLabel>
+                            <Label className="text-xs">Route (Optional)</Label>
                             <Input 
                               value={med.route || ''} 
                               onChange={(e) => handleMedicationFieldChange(index, 'route', e.target.value)}
@@ -412,7 +413,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                           </FormItem>
                         </div>
                         <FormItem>
-                          <FormLabel className="text-xs">Additional Instructions (Optional)</FormLabel>
+                          <Label className="text-xs">Additional Instructions (Optional)</Label>
                           <Textarea
                             value={med.additionalInstructions || ''}
                             onChange={(e) => handleMedicationFieldChange(index, 'additionalInstructions', e.target.value)}
@@ -436,7 +437,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               )}
 
               <div>
-                <FormLabel className="block text-md font-medium text-foreground mb-1">General Instructions (Optional)</FormLabel>
+                <Label className="block text-md font-medium text-foreground mb-1">General Instructions (Optional)</Label>
                 <Textarea 
                     value={editedSuggestion.generalInstructions || ''} 
                     onChange={(e) => handleGenericFieldChange('generalInstructions', e.target.value)}
@@ -447,7 +448,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
               </div>
               
               <div>
-                <FormLabel className="block text-md font-medium text-foreground mb-1">Follow Up (Optional)</FormLabel>
+                <Label className="block text-md font-medium text-foreground mb-1">Follow Up (Optional)</Label>
                 <Textarea 
                     value={editedSuggestion.followUp || ''} 
                     onChange={(e) => handleGenericFieldChange('followUp', e.target.value)}
@@ -487,5 +488,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   );
 };
 
+
+    
 
     

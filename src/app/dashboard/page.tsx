@@ -1,6 +1,8 @@
 
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/layout/AppShell';
 import { PatientList } from '@/components/dashboard/PatientList';
 import { PrescriptionGenerator } from '@/components/dashboard/PrescriptionGenerator';
@@ -9,24 +11,33 @@ import type { Patient, Appointment } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import { useAppState } from '@/hooks/useAppState';
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 
 export default function DashboardPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const prescriptionSectionRef = useRef<HTMLDivElement>(null);
-  const { patients, refreshPatients, refreshAppointments } = useAppState(); // patients are now from Firestore via context
+  const { patients, refreshPatients, refreshAppointments, isLoadingPatients, isLoadingAppointments } = useAppState();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initial fetch or refresh if needed, though AppStateContext handles initial load
-    refreshPatients();
-    refreshAppointments();
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) { // Only fetch data if authenticated
+      refreshPatients();
+      refreshAppointments();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated]); // Depend on isAuthenticated to refetch if login state changes
 
 
   const handleSelectPatientAndScroll = (patient: Patient | null) => {
     setSelectedPatient(patient);
-
     if (patient && prescriptionSectionRef.current) {
       setTimeout(() => {
         prescriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -47,7 +58,6 @@ export default function DashboardPage() {
     }
 
     const patientName = appointment.patientName;
-    // Ensure `patients` from context is used here
     const patientToSelect = patients.find(
         (p) => p.name.trim().toLowerCase() === patientName.trim().toLowerCase()
     );
@@ -55,33 +65,43 @@ export default function DashboardPage() {
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      console.warn(`Patient with name "${patientName}" not found in records. Creating temporary patient object.`);
+      console.warn(\`Patient with name "\${patientName}" not found in records. Creating temporary patient object.\`);
       
       const temporaryPatient: Patient = {
-        id: `temp-appointment-${appointment.id}`, // Temporary ID
+        id: \`temp-appointment-\${appointment.id}\`, 
         name: appointment.patientName,
-        age: appointment.patientAge !== undefined ? appointment.patientAge : 0, // Ensure age is number
-        diagnosis: appointment.symptoms || 'Awaiting diagnosis', // Use symptoms as initial diagnosis
+        age: appointment.patientAge !== undefined ? appointment.patientAge : 0, 
+        diagnosis: appointment.symptoms || 'Awaiting diagnosis', 
         history: 'Patient details loaded from appointment. Verify and complete medical history. This is not a saved patient record yet.',
-        prescriptions: [], // Initialize prescriptions array
+        prescriptions: [], 
       };
       
       handleSelectPatientAndScroll(temporaryPatient);
       toast({
         title: "Temporary Patient Loaded",
-        description: `Details for ${appointment.patientName} loaded from appointment. This is a temporary view; save a prescription to create a permanent record.`,
+        description: \`Details for \${appointment.patientName} loaded from appointment. This is a temporary view; save a prescription to create a permanent record.\`,
         variant: "default",
       });
     }
   };
   
-  // Callback for PrescriptionGenerator to update this page's selectedPatient state
-  // This is crucial when a temporary patient is saved to Firestore and gets a new ID.
   const handlePatientRecordUpdate = (updatedPatient: Patient) => {
-    setSelectedPatient(updatedPatient); // This ensures the dashboard page state is current
-    refreshPatients(); // Optionally refresh the main list from context
+    setSelectedPatient(updatedPatient); 
+    refreshPatients(); 
   };
 
+  if (isAuthLoading || (!isAuthenticated && !isAuthLoading) ) { // Added check for !isAuthenticated before redirect
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-background gap-4 p-4">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-2 text-center">
+          <Skeleton className="h-6 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
+        </div>
+        <p className="text-muted-foreground mt-2">Loading or redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <AppShell>

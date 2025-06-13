@@ -24,6 +24,7 @@ export interface Doctor {
   id: string;
   name: string;
   specialty: string;
+  email: string; // Added for Firebase Auth
 }
 
 export interface Prescription {

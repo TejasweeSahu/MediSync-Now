@@ -2,85 +2,98 @@
 'use client';
 
 import type { Doctor } from '@/types';
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { defaultDoctor } from '@/data/mockData';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { auth } from '@/lib/firebase';
+import { 
+  User as FirebaseUser, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail
+} from 'firebase/auth';
+import { mockDoctors } from '@/data/mockData'; // We'll use this to find doctor details by email
 
 interface AuthContextType {
   isAuthenticated: boolean;
   doctor: Doctor | null;
-  login: (doctorId: string) => void;
-  logout: () => void;
+  firebaseUser: FirebaseUser | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
   isLoading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'medisync_auth_doctor_id';
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    try {
-      const storedDoctorId = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (storedDoctorId) {
-        // In a real app, you'd fetch doctor details based on ID
-        // For simulation, we'll use the defaultDoctor if ID matches, or a generic one
-        if (storedDoctorId === defaultDoctor.id) {
-          setDoctor(defaultDoctor);
-          setIsAuthenticated(true);
-        } else {
-          // Handle case where stored ID might not match any mock doctor
-          // For now, let's assume it's the default doctor for simplicity of simulation
-          setDoctor(defaultDoctor);
-          setIsAuthenticated(true);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to access localStorage:", error);
-      // Fallback or error handling if localStorage is not available
+  const mapFirebaseUserToDoctor = useCallback((user: FirebaseUser | null): Doctor | null => {
+    if (!user || !user.email) {
+      return null;
     }
-    setIsLoading(false);
+    // Find the doctor profile from mock data based on the Firebase user's email
+    // In a real app, you'd fetch this from a 'doctors' collection in Firestore using user.uid
+    const matchedDoctor = mockDoctors.find(d => d.email.toLowerCase() === user.email!.toLowerCase());
+    return matchedDoctor || null;
   }, []);
 
-  const login = (doctorId: string) => {
-    // Simulate login - in real app, this would involve API call
-    // For now, we'll use the defaultDoctor if ID matches
-    if (doctorId === defaultDoctor.id) {
-      setDoctor(defaultDoctor);
-      setIsAuthenticated(true);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, doctorId);
-      } catch (error) {
-         console.error("Failed to access localStorage:", error);
+  useEffect(() => {
+    setIsLoading(true);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setFirebaseUser(user);
+        const currentDoctor = mapFirebaseUserToDoctor(user);
+        setDoctor(currentDoctor);
+        setIsAuthenticated(true);
+      } else {
+        setFirebaseUser(null);
+        setDoctor(null);
+        setIsAuthenticated(false);
       }
-    } else {
-      // Handle other doctors if necessary or show error
-      console.warn(`Login attempt for unknown doctor ID: ${doctorId}. Simulating with default doctor.`);
-      setDoctor(defaultDoctor); // Fallback to default for simulation
-      setIsAuthenticated(true);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, defaultDoctor.id);
-      } catch (error) {
-        console.error("Failed to access localStorage:", error);
-      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, [mapFirebaseUserToDoctor]);
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle setting user and doctor state
+    } catch (error) {
+      setIsLoading(false);
+      throw error; // Re-throw for the form to handle
+    }
+    // setLoading will be set to false by onAuthStateChanged
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await firebaseSignOut(auth);
+      // onAuthStateChanged will handle clearing user and doctor state
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error signing out: ", error);
+      throw error;
     }
   };
 
-  const logout = () => {
-    setDoctor(null);
-    setIsAuthenticated(false);
+  const sendPasswordReset = async (email: string) => {
     try {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      await firebaseSendPasswordResetEmail(auth, email);
     } catch (error) {
-      console.error("Failed to access localStorage:", error);
+      throw error; // Re-throw for the form to handle
     }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, doctor, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, doctor, firebaseUser, login, logout, sendPasswordReset, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

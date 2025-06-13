@@ -30,10 +30,9 @@ type PrescriptionFormValues = z.infer<typeof formSchema>;
 
 interface PrescriptionGeneratorProps {
   selectedPatient?: Patient | null;
-  triggerAutoSuggestion?: boolean; // New prop
 }
 
-export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient, triggerAutoSuggestion = false }) => {
+export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestPrescriptionOutput | null>(null);
   const { toast } = useToast();
@@ -57,45 +56,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         patientHistory: selectedPatient.history || '',
       });
       setSuggestion(null); 
-
-      const symptomsForAISuggestion = selectedPatient.diagnosis;
-
-      if (triggerAutoSuggestion && symptomsForAISuggestion && doctor?.name) {
-        setIsLoading(true);
-        suggestPrescription({
-          symptoms: symptomsForAISuggestion,
-          diagnosis: selectedPatient.diagnosis || symptomsForAISuggestion,
-          patientHistory: selectedPatient.history || 'N/A',
-          doctorName: doctor.name,
-        })
-        .then(result => {
-          setSuggestion(result);
-          toast({
-            title: "Auto-Suggestion Generated",
-            description: "An initial prescription suggestion has been generated. Review and refine symptoms if needed.",
-          });
-        })
-        .catch(error => {
-          console.error('Error auto-generating prescription:', error);
-          toast({
-            title: "Auto-Suggestion Error",
-            description: "Could not generate initial suggestion. Please enter symptoms and try manually.",
-            variant: "destructive",
-          });
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false); // Ensure loading is false if not auto-suggesting
-      }
+      setIsLoading(false); // Ensure loading state is reset
     } else {
       form.reset({ symptoms: '', diagnosis: '', patientHistory: '' });
       setSuggestion(null);
       setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient, triggerAutoSuggestion, form, doctor?.name, toast]);
+  }, [selectedPatient, form]);
 
   const onSubmit: SubmitHandler<PrescriptionFormValues> = async (data) => {
     setIsLoading(true);
@@ -249,27 +217,20 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isLoading || !selectedPatient}>
-              {isLoading && !suggestion && !triggerAutoSuggestion ? ( 
+              {isLoading ? ( 
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              {isLoading && !suggestion && !triggerAutoSuggestion ? 'Generating...' : 'Suggest New / Refine'}
+              {isLoading ? 'Generating...' : 'Suggest New / Refine'}
             </Button>
           </CardFooter>
         </form>
       </Form>
 
-      {isLoading && suggestion && triggerAutoSuggestion && ( 
-         <CardContent className="pt-2 pb-0 text-center">
-            <p className="text-sm text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Refreshing suggestion...</p>
-        </CardContent>
-      )}
-
       {suggestion && (
         <CardContent className="mt-6 border-t pt-6">
-          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2"><FileText className="text-accent" /> {isLoading && triggerAutoSuggestion ? "Loading Suggestion..." : "Current AI Suggestion"}</h3>
-          {!(isLoading && triggerAutoSuggestion) && (
+          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2"><FileText className="text-accent" /> Current AI Suggestion</h3>
             <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
               <div>
                 <strong className="block text-sm font-medium text-foreground">Suggestion:</strong>
@@ -286,7 +247,6 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                   Save Suggestion to Record
               </Button>
             </div>
-          )}
         </CardContent>
       )}
        {!selectedPatient && !isLoading && (
@@ -297,3 +257,4 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
+

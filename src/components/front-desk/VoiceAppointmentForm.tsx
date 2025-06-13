@@ -150,12 +150,28 @@ export const VoiceAppointmentForm: React.FC = () => {
         form.setValue('symptoms', capitalizeFirstLetter(result.symptoms));
         fieldsUpdatedCount++;
       }
+      
       if (result.doctorQuery) {
-        const doctorNameQuery = result.doctorQuery.toLowerCase();
-        const foundDoctor = mockDoctors.find(doc => 
-          doc.name.toLowerCase().includes(doctorNameQuery) || 
-          (doc.name.toLowerCase().split(' ').pop()?.includes(doctorNameQuery) && doctorNameQuery.length > 2)
-        );
+        let doctorQueryNormalized = result.doctorQuery.toLowerCase();
+        // Remove common prefixes like "dr. ", "dr ", "doctor "
+        doctorQueryNormalized = doctorQueryNormalized.replace(/^dr\.?\s*/, '').replace(/^doctor\s*/, '');
+
+        const foundDoctor = mockDoctors.find(doc => {
+          const doctorNameLower = doc.name.toLowerCase();
+          // Remove prefixes from the doctor's name for matching
+          const doctorNameNormalized = doctorNameLower.replace(/^dr\.?\s*/, '').replace(/^doctor\s*/, '');
+          const doctorNameParts = doctorNameNormalized.split(' ');
+
+          // Check if the normalized query is part of the normalized full name
+          if (doctorNameNormalized.includes(doctorQueryNormalized)) {
+            return true;
+          }
+          // Check if the normalized query matches any part of the doctor's name (e.g., last name or first name)
+          // and the query is reasonably long to avoid accidental matches with short words.
+          return doctorNameParts.some(part => doctorQueryNormalized.includes(part) && part.length > 2) || 
+                 doctorNameParts.some(part => part.includes(doctorQueryNormalized) && doctorQueryNormalized.length > 2);
+        });
+        
         if (foundDoctor) {
           form.setValue('doctorId', foundDoctor.id);
           fieldsUpdatedCount++;
@@ -195,7 +211,7 @@ export const VoiceAppointmentForm: React.FC = () => {
     } catch (error: any) {
       console.error('Error parsing transcript with AI:', error);
        let errorMessage = "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.";
-      if (error.message && error.message.includes('503 Service Unavailable')) {
+      if (error.message && (error.message.includes('503 Service Unavailable') || error.message.includes('overloaded'))) {
         errorMessage = "The AI model is currently overloaded. Please try again in a few moments, or fill the form manually.";
       }
       toast({ 
@@ -466,7 +482,7 @@ export const VoiceAppointmentForm: React.FC = () => {
             </Button>
             <Button 
               type="submit" 
-              className="w-full sm-w-auto" 
+              className="w-full sm:w-auto" 
               disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
             >
               {(form.formState.isSubmitting || isParsingTranscript) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

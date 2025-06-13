@@ -223,7 +223,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processTranscriptWithAI, toast]); // Removed toggleListening from dependencies as it's stable
+  }, [processTranscriptWithAI, toast]);
 
 
   const capitalizeFirstLetter = (string: string) => {
@@ -280,7 +280,6 @@ export const VoiceAppointmentForm: React.FC = () => {
           </CardTitle>
           <CardDescription>
             Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.
-            <br />For best results, try saying details like: <em>"Book for Priya Singh, 30 years old, for cough and fever, with Dr. Mehta, for tomorrow afternoon."</em>
           </CardDescription>
         </div>
         <TooltipProvider>

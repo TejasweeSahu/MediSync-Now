@@ -11,12 +11,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const ParseAppointmentTranscriptInputSchema = z.object({
+const ParseAppointmentTranscriptInputSchema = z.object({
   transcript: z.string().describe('The raw voice transcript of the appointment request.'),
 });
 export type ParseAppointmentTranscriptInput = z.infer<typeof ParseAppointmentTranscriptInputSchema>;
 
-export const ParseAppointmentTranscriptOutputSchema = z.object({
+const ParseAppointmentTranscriptOutputSchema = z.object({
   patientName: z.string().optional().describe('The extracted name of the patient. e.g., "John Doe"'),
   patientAge: z.number().optional().describe('The extracted age of the patient as a number. e.g., 34'),
   symptoms: z.string().optional().describe('The extracted symptoms described by the patient. e.g., "cough and fever"'),
@@ -70,3 +70,4 @@ const parseAppointmentTranscriptFlow = ai.defineFlow(
     return output!;
   }
 );
+

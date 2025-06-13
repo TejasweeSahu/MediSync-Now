@@ -4,7 +4,7 @@
 import React from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
-import type { Appointment, Patient } from '@/types';
+import type { Appointment } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,11 +12,11 @@ import { CalendarDays, User, Clock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface UpcomingAppointmentsProps {
-  onAppointmentSelect: (patientName: string) => void;
+  onAppointmentSelect: (appointment: Appointment) => void;
 }
 
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
-  const { getAppointmentsForDoctor } = useAppState(); // Removed updateAppointmentStatus as it's not used here
+  const { getAppointmentsForDoctor } = useAppState();
   const { doctor } = useAuth();
 
   if (!doctor) {
@@ -65,10 +65,10 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
               <Card 
                 key={appointment.id} 
                 className="bg-background hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => onAppointmentSelect(appointment.patientName)}
+                onClick={() => onAppointmentSelect(appointment)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment.patientName);}}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment);}}
                 aria-label={`Select appointment for ${appointment.patientName}`}
               >
                 <CardHeader className="pb-3">
@@ -87,7 +87,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground space-y-1">
                   <div className="flex items-center gap-2">
-                    <User size={14} /> Age: {appointment.patientAge || 'N/A'}
+                    <User size={14} /> Age: {appointment.patientAge !== undefined ? appointment.patientAge : 'N/A'}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={14} /> 

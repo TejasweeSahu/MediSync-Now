@@ -5,7 +5,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { PatientList } from '@/components/dashboard/PatientList';
 import { PrescriptionGenerator } from '@/components/dashboard/PrescriptionGenerator';
 import { UpcomingAppointments } from '@/components/dashboard/UpcomingAppointments';
-import type { Patient } from '@/types';
+import type { Patient, Appointment } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import { useAppState } from '@/hooks/useAppState';
 import { useToast } from "@/hooks/use-toast";
@@ -29,17 +29,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAppointmentClick = (patientName: string) => {
-    if (!patientName || typeof patientName !== 'string') {
-        console.warn('Invalid patientName received for appointment click.');
+  const handleAppointmentClick = (appointment: Appointment) => {
+    if (!appointment || !appointment.patientName) {
+        console.warn('Invalid appointment data received.');
         toast({
             title: "Error",
-            description: "Invalid patient data from appointment.",
+            description: "Invalid appointment data.",
             variant: "destructive",
         });
         handleSelectPatientAndScroll(null);
         return;
     }
+
+    const patientName = appointment.patientName;
     const patientToSelect = patients.find(
         (p) => p.name.trim().toLowerCase() === patientName.trim().toLowerCase()
     );
@@ -47,13 +49,24 @@ export default function DashboardPage() {
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      console.warn(`Patient with name "${patientName}" not found for appointment click.`);
+      // Patient not found in main records, create a temporary patient object
+      console.warn(`Patient with name "${patientName}" not found in main records. Creating temporary patient from appointment.`);
+      
+      const temporaryPatient: Patient = {
+        id: `temp-appointment-${appointment.id}`, // Unique temporary ID
+        name: appointment.patientName,
+        age: appointment.patientAge !== undefined ? appointment.patientAge : 0, // Default age if not provided
+        diagnosis: appointment.symptoms, // Use appointment symptoms as initial diagnosis
+        history: 'Patient details loaded from appointment. Verify and complete medical history.',
+        // avatarUrl will be undefined
+      };
+      
+      handleSelectPatientAndScroll(temporaryPatient);
       toast({
-        title: "Patient Not Found",
-        description: `The patient "${patientName}" from the appointment was not found in the main records. Cannot load details.`,
+        title: "Temporary Patient Loaded",
+        description: `Details for ${appointment.patientName} loaded from appointment. This is not a saved patient record.`,
         variant: "default",
       });
-      handleSelectPatientAndScroll(null); // Deselect if patient not found
     }
   };
 

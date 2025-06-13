@@ -20,7 +20,7 @@ interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
 }
 
-const INITIAL_PATIENTS_COUNT = 4;
+const INITIAL_PATIENTS_COUNT = 3;
 
 export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => {
   const { patients, isLoadingPatients } = useAppState();
@@ -61,7 +61,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
           <CardTitle className="flex items-center gap-2"><Users /> Patient Records</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {[...Array(3)].map((_, i) => (
+          {[...Array(INITIAL_PATIENTS_COUNT)].map((_, i) => (
             <div key={i} className="flex items-center space-x-4 p-2">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="space-y-2">

@@ -65,10 +65,10 @@ export default function DashboardPage() {
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      console.warn('Patient with name "' + patientName + '" not found in records. Creating temporary patient object.');
+      console.warn("Patient with name \"" + patientName + "\" not found in records. Creating temporary patient object.");
       
       const temporaryPatient: Patient = {
-        id: 'temp-appointment-' + appointment.id, 
+        id: "temp-appointment-" + appointment.id, 
         name: appointment.patientName,
         age: appointment.patientAge !== undefined ? appointment.patientAge : 0, 
         diagnosis: appointment.symptoms || 'Awaiting diagnosis', 
@@ -109,11 +109,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-8 font-headline text-primary">Doctor Dashboard</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <PatientList onSelectPatient={handleSelectPatientAndScroll} />
-          </div>
           <div className="lg:col-span-1 space-y-6">
             <UpcomingAppointments onAppointmentSelect={handleAppointmentClick} />
+          </div>
+          <div className="lg:col-span-2 space-y-6">
+            <PatientList onSelectPatient={handleSelectPatientAndScroll} />
           </div>
         </div>
 

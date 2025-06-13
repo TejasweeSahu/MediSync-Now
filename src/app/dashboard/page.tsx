@@ -7,12 +7,14 @@ import { PrescriptionGenerator } from '@/components/dashboard/PrescriptionGenera
 import { UpcomingAppointments } from '@/components/dashboard/UpcomingAppointments';
 import type { Patient } from '@/types';
 import { Separator } from '@/components/ui/separator';
-import { useAppState } from '@/hooks/useAppState'; // Import useAppState to access patients
+import { useAppState } from '@/hooks/useAppState';
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const prescriptionSectionRef = useRef<HTMLDivElement>(null);
-  const { patients } = useAppState(); // Get patients from global state
+  const { patients } = useAppState();
+  const { toast } = useToast();
 
   const handleSelectPatientAndScroll = (patient: Patient | null) => {
     setSelectedPatient(patient);
@@ -30,6 +32,11 @@ export default function DashboardPage() {
   const handleAppointmentClick = (patientName: string) => {
     if (!patientName || typeof patientName !== 'string') {
         console.warn('Invalid patientName received for appointment click.');
+        toast({
+            title: "Error",
+            description: "Invalid patient data from appointment.",
+            variant: "destructive",
+        });
         handleSelectPatientAndScroll(null);
         return;
     }
@@ -40,8 +47,12 @@ export default function DashboardPage() {
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      // Handle case where patient might not be found
       console.warn(`Patient with name "${patientName}" not found for appointment click.`);
+      toast({
+        title: "Patient Not Found",
+        description: `The patient "${patientName}" from the appointment was not found in the main records. Cannot load details.`,
+        variant: "default",
+      });
       handleSelectPatientAndScroll(null); // Deselect if patient not found
     }
   };

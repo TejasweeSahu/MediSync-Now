@@ -25,6 +25,8 @@ interface AppStateContextType {
   refreshPatients: () => Promise<void>;
   sortConfig: { field: SortableField; direction: SortDirection };
   setSortConfig: (config: { field: SortableField; direction: SortDirection }) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
 }
 
 export const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
@@ -75,11 +77,22 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [sortConfig, setSortConfig] = useState<{ field: SortableField; direction: SortDirection }>({ field: 'lastActivity', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPatients = useCallback(async () => {
     setIsLoadingPatients(true);
     try {
       let fetchedPatients = await patientService.getPatients();
+      
+      // Apply filtering based on searchTerm
+      if (searchTerm.trim() !== '') {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
+        fetchedPatients = fetchedPatients.filter(patient => 
+          patient.name.toLowerCase().includes(lowercasedSearchTerm) ||
+          patient.diagnosis.toLowerCase().includes(lowercasedSearchTerm) ||
+          patient.history.toLowerCase().includes(lowercasedSearchTerm)
+        );
+      }
       
       // Apply sorting based on sortConfig
       fetchedPatients.sort((a, b) => {
@@ -106,11 +119,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
       setPatients(patientsWithDisplayTimestamp);
     } catch (error) {
-      console.error("Error fetching or sorting patients:", error);
+      console.error("Error fetching, filtering, or sorting patients:", error);
     } finally {
       setIsLoadingPatients(false);
     }
-  }, [sortConfig]); // sortConfig is now a dependency
+  }, [sortConfig, searchTerm]); // sortConfig and searchTerm are now dependencies
 
   const fetchAppointments = useCallback(async () => {
     setIsLoadingAppointments(true);
@@ -132,7 +145,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     };
     seedAndFetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchPatients, fetchAppointments]); // fetchPatients will change if sortConfig changes, re-triggering
+  }, [fetchPatients, fetchAppointments]); // fetchPatients will change if sortConfig or searchTerm changes
 
 
   const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]}): Promise<Patient> => {
@@ -186,6 +199,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       refreshPatients: fetchPatients,
       sortConfig,
       setSortConfig,
+      searchTerm,
+      setSearchTerm,
     }}>
       {children}
     </AppStateContext.Provider>

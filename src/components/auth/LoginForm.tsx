@@ -158,9 +158,6 @@ export const LoginForm: React.FC = () => {
                 </Button>
             </div>
           </div>
-           <p className="text-xs text-muted-foreground">
-              For demo, use email: <code className="font-code bg-muted px-1 py-0.5 rounded">{defaultDoctor.email}</code> and password: <code className="font-code bg-muted px-1 py-0.5 rounded">password</code> (or any of the mock doctor emails with a password you set in Firebase Auth).
-            </p>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full text-base py-6" disabled={isLoading}>

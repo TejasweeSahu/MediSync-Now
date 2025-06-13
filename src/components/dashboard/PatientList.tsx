@@ -12,15 +12,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Pencil, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Pencil, FileText, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { format, parseISO } from 'date-fns';
 
 interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
 }
 
-const INITIAL_PATIENTS_COUNT = 3; // Changed from 2 to 3 to better match appointment card height
+const INITIAL_PATIENTS_COUNT = 3;
 
 export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => {
   const { patients, isLoadingPatients } = useAppState();
@@ -61,7 +62,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
           <CardTitle className="flex items-center gap-2"><Users /> Patient Records</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {[...Array(INITIAL_PATIENTS_COUNT)].map((_, i) => ( 
+          {[...Array(INITIAL_PATIENTS_COUNT)].map((_, i) => (
             <div key={i} className="flex items-center space-x-4 p-2">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="space-y-2">
@@ -108,17 +109,17 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                   <TableHead className="text-center">Age</TableHead>
                   <TableHead>Diagnosis</TableHead>
                   <TableHead className="hidden md:table-cell">History</TableHead>
+                  <TableHead className="text-center">Created Time</TableHead>
                   <TableHead className="text-center">Prescribed</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayedPatients.map((patient) => (
-                  <TableRow 
-                    key={patient.id} 
-                    className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" } 
+                  <TableRow
+                    key={patient.id}
+                    className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" }
                     onClick={onSelectPatient ? (e) => {
-                      // Do not trigger row select if the click was on an action button inside the row
                       if ((e.target as HTMLElement).closest('button[data-action-button]')) return;
                       onSelectPatient(patient);
                     } : undefined}
@@ -135,6 +136,9 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                       <Badge variant="secondary" className="whitespace-nowrap">{patient.diagnosis}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground hidden md:table-cell truncate max-w-xs">{patient.history}</TableCell>
+                    <TableCell className="text-center text-xs text-muted-foreground">
+                      {patient.createdAt ? format(parseISO(patient.createdAt), 'p') : 'N/A'}
+                    </TableCell>
                     <TableCell className="text-center">
                       {patient.prescriptions && patient.prescriptions.length > 0 ? (
                         <Button
@@ -152,9 +156,9 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={(e) => { e.stopPropagation(); handleEdit(patient);}}
                         data-action-button // Prevents row click
                         aria-label={`Edit patient ${patient.name}`}
@@ -224,3 +228,4 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     </>
   );
 };
+

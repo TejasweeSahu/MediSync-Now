@@ -1,14 +1,15 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
 import type { Appointment } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, User, Clock, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CalendarDays, User, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -16,25 +17,36 @@ interface UpcomingAppointmentsProps {
   onAppointmentSelect: (appointment: Appointment) => void;
 }
 
+const INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON = 3; // Approx items fitting in 300px
+const INITIAL_SCROLL_HEIGHT = "300px";
+const EXPANDED_SCROLL_HEIGHT = "500px";
+
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
   const { getAppointmentsForDoctor, isLoadingAppointments, appointments, refreshAppointments } = useAppState();
   const { doctor } = useAuth();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (doctor) {
-        refreshAppointments(); // Fetch appointments when doctor info is available or changes
+        refreshAppointments(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doctor]); // Removed refreshAppointments from dependency array to avoid loop if it's not stable
+  }, [doctor]); 
 
-  if (!doctor) {
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  if (!doctor && !isLoadingAppointments) { // Also check isLoadingAppointments to avoid flash of this message
     return (
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><CalendarDays /> My Appointments</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <CalendarDays className="text-primary" /> My Appointments
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Loading doctor information...</p>
+          <p className="text-muted-foreground">Loading doctor information or no doctor logged in.</p>
         </CardContent>
       </Card>
     );
@@ -59,7 +71,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     );
   }
   
-  const doctorAppointments = getAppointmentsForDoctor(doctor.id);
+  const doctorAppointments = doctor ? getAppointmentsForDoctor(doctor.id) : [];
 
 
   if (!doctorAppointments.length) {
@@ -87,7 +99,10 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
         <CardDescription>Your scheduled appointments. Click an appointment to view patient details for prescription.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[300px] pr-4">
+        <ScrollArea 
+          className="pr-4 transition-all duration-300 ease-in-out" 
+          style={{ height: isExpanded ? EXPANDED_SCROLL_HEIGHT : INITIAL_SCROLL_HEIGHT }}
+        >
           <div className="space-y-4">
             {doctorAppointments.map((appointment) => (
               <Card 
@@ -126,6 +141,18 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
             ))}
           </div>
         </ScrollArea>
+        {doctorAppointments.length > INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON && (
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                onClick={toggleExpand}
+                className="w-auto bg-secondary/30 hover:bg-secondary/50 text-secondary-foreground"
+              >
+                {isExpanded ? 'Show Less' : 'Show More'}
+                {isExpanded ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+              </Button>
+            </div>
+          )}
       </CardContent>
     </Card>
   );

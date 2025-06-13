@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Pencil, FileText } from 'lucide-react';
+import { Users, Pencil, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -20,11 +20,14 @@ interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
 }
 
+const INITIAL_PATIENTS_COUNT = 4;
+
 export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => {
   const { patients, isLoadingPatients } = useAppState();
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [patientToViewPrescriptions, setPatientToViewPrescriptions] = useState<Patient | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleEdit = (patient: Patient) => {
     setEditingPatient(patient);
@@ -44,6 +47,12 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
   const handleClosePrescriptionsDialog = () => {
     setPatientToViewPrescriptions(null);
   };
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const displayedPatients = isExpanded ? patients : patients.slice(0, INITIAL_PATIENTS_COUNT);
 
   if (isLoadingPatients) {
     return (
@@ -104,11 +113,12 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {patients.map((patient) => (
+                {displayedPatients.map((patient) => (
                   <TableRow 
                     key={patient.id} 
                     className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" } 
                     onClick={onSelectPatient ? (e) => {
+                      // Do not trigger row select if the click was on an action button inside the row
                       if ((e.target as HTMLElement).closest('button[data-action-button]')) return;
                       onSelectPatient(patient);
                     } : undefined}
@@ -157,6 +167,18 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
               </TableBody>
             </Table>
           </div>
+          {patients.length > INITIAL_PATIENTS_COUNT && (
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                onClick={toggleExpand}
+                className="w-auto bg-secondary/30 hover:bg-secondary/50 text-secondary-foreground"
+              >
+                {isExpanded ? 'Show Less' : 'Show More'}
+                {isExpanded ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -202,4 +224,3 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     </>
   );
 };
-

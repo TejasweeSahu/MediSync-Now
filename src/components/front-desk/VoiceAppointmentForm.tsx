@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 
 const appointmentFormSchema = z.object({
@@ -328,3 +329,4 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
+

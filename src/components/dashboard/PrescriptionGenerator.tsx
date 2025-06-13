@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Label } from '@/components/ui/label'; // Changed from FormLabel
-import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle, Trash2 } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput, MedicationDetail } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
@@ -264,6 +264,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     });
   };
 
+  const handleRemoveMedication = (medIndex: number) => {
+    setEditedSuggestion(prev => {
+      if (!prev || !prev.medications) return null;
+      const updatedMedications = prev.medications.filter((_, index) => index !== medIndex);
+      return { ...prev, medications: updatedMedications };
+    });
+  };
+
 
   return (
     <Card className="shadow-lg">
@@ -385,7 +393,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 {editedSuggestion.medications && editedSuggestion.medications.length > 0 ? (
                   <ul className="space-y-4 list-inside">
                     {editedSuggestion.medications.map((med, index) => (
-                      <li key={index} className="p-4 border rounded-md bg-background shadow-sm space-y-3">
+                      <li key={index} className="p-4 border rounded-md bg-background shadow-sm space-y-3 relative">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveMedication(index)}
+                          className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive"
+                          aria-label="Remove medication"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormItem>
                             <Label className="text-xs">Name</Label>

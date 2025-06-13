@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { parseAppointmentTranscript } from '@/ai/flows/parse-appointment-transcript-flow';
 import type { ParseAppointmentTranscriptInput, ParseAppointmentTranscriptOutput } from '@/ai/flows/parse-appointment-transcript-flow';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const appointmentFormSchema = z.object({
@@ -163,6 +164,23 @@ export const VoiceAppointmentForm: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, toast]);
 
+  const toggleListening = useCallback(() => {
+    if (!speechApiAvailable) {
+      toast({ title: "Feature Unavailable", description: "Speech recognition is not supported in your browser.", variant: "destructive"});
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false); 
+    } else {
+      setTranscript(''); 
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
+    }
+  }, [speechApiAvailable, isListening, toast, setTranscript]);
+
+
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognitionAPI) {
@@ -205,24 +223,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processTranscriptWithAI, toast]); 
-
-
-  const toggleListening = useCallback(() => {
-    if (!speechApiAvailable) {
-      toast({ title: "Feature Unavailable", description: "Speech recognition is not supported in your browser.", variant: "destructive"});
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false); 
-    } else {
-      setTranscript(''); 
-      recognitionRef.current.start();
-      setIsListening(true);
-      toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
-    }
-  }, [speechApiAvailable, isListening, toast, setTranscript]);
+  }, [processTranscriptWithAI, toast, toggleListening]); 
 
 
   const capitalizeFirstLetter = (string: string) => {
@@ -282,28 +283,30 @@ export const VoiceAppointmentForm: React.FC = () => {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
             <div className="flex flex-col items-center gap-4">
-              <Button
-                type="button"
-                onClick={toggleListening}
-                variant={isListening ? "destructive" : "default"}
-                size="lg"
-                className="w-full sm:w-auto"
-                disabled={!speechApiAvailable || isParsingTranscript}
-              >
-                {isListening ? (
-                  <>
-                    <MicOff className="mr-2 h-5 w-5" /> Stop Listening
-                  </>
-                ) : isParsingTranscript ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...
-                  </>
-                ) : (
-                  <>
-                    <Mic className="mr-2 h-5 w-5" /> Start Voice Input
-                  </>
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    onClick={toggleListening}
+                    variant={isListening ? "destructive" : "default"}
+                    size="icon"
+                    className="rounded-full w-14 h-14" 
+                    disabled={!speechApiAvailable || isParsingTranscript}
+                    aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
+                  >
+                    {isListening ? (
+                      <MicOff className="h-6 w-6" />
+                    ) : isParsingTranscript ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <Mic className="h-6 w-6" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isListening ? "Stop Listening" : isParsingTranscript ? "Processing..." : "Start Voice Input"}</p>
+                </TooltipContent>
+              </Tooltip>
               {!speechApiAvailable && <p className="text-sm text-destructive">Speech recognition not available in this browser.</p>}
               {transcript && (
                 <p className="text-sm text-muted-foreground italic">Transcript: "{transcript}"</p>

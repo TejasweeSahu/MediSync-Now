@@ -38,7 +38,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI assistant helping a front desk operator book medical appointments.
 Your task is to parse the provided voice transcript and extract the following details:
 - Patient's full name (patientName)
-- Patient's age as a number (patientAge)
+- Patient's age as a number (patientAge). If age is mentioned, it MUST be a number. If no age is mentioned, omit the patientAge field.
 - Patient's symptoms (symptoms)
 - The name or part of the name of the doctor the patient wants to see (doctorQuery)
 - The desired appointment date (appointmentDateYYYYMMDD)
@@ -51,6 +51,7 @@ Current Date (for reference): {{{currentDate}}}
 
 Guidelines for extraction:
 - If any piece of information is not clearly mentioned, omit that field or return it as undefined.
+- For patientAge: Extract only if a number is explicitly stated for age. Do not infer. If "30 years old" is said, extract 30.
 - For appointmentDateYYYYMMDD:
   - Convert relative dates like "today", "tomorrow", "next Monday" into YYYY-MM-DD format based on the provided 'currentDate'.
   - If a specific date is mentioned (e.g., "October 27th"), use that. Assume the current year if not specified.
@@ -78,6 +79,17 @@ Output:
   doctorQuery: "Dr. Peterson" (or "Peterson")
   appointmentDateYYYYMMDD: "2023-10-31"
   appointmentTimeHHMM: "14:30"
+
+Example 3:
+Transcript: "My son Michael needs a checkup for his allergies sometime next week in the afternoon. He's ten."
+Current Date: "2024-07-22" (assuming next week starts on 2024-07-29)
+Output:
+  patientName: "Michael"
+  patientAge: 10
+  symptoms: "allergies checkup"
+  appointmentDateYYYYMMDD: "2024-07-29" (example, actual day depends on AI logic for "next week")
+  appointmentTimeHHMM: "14:00"
+
 
 Focus on extracting the information as accurately as possible based on the transcript and current date.
 `,

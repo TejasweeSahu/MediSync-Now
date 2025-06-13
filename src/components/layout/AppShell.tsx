@@ -18,9 +18,8 @@ import {
 } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { Logo } from '@/components/shared/Logo';
-import { LayoutDashboard, Mic, LogOut } from 'lucide-react'; // Removed Users, not used after simplification
+import { LayoutDashboard, Mic, LogOut } from 'lucide-react';
 import { Button } from '../ui/button';
-// import { Skeleton } from '../ui/skeleton'; // Removed Skeleton import
 
 interface NavItem {
   href: string;
@@ -47,15 +46,12 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          {/* Simplified loading state */}
+        {/* Simplified loading state to avoid potential issues with Logo/Skeleton during SSR */}
+        <div>
           <p className="text-2xl font-bold text-primary">MediSync Now</p>
           <p className="text-muted-foreground">Loading application...</p>
-          <div role="status" className="animate-pulse">
-            <div className="h-8 w-48 bg-muted rounded-md mb-2"></div>
-            <div className="h-8 w-32 bg-muted rounded-md"></div>
-            <span className="sr-only">Loading...</span>
-          </div>
+          {/* Basic loading indicator */}
+          <p>Loading...</p>
         </div>
       </div>
     );

@@ -5,6 +5,7 @@ import type { Patient, Appointment } from '@/types';
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import * as patientService from '@/services/patientService';
 import * as appointmentService from '@/services/appointmentService';
+import { parse as parseDate } from 'date-fns'; // Import parse from date-fns
 
 interface AppStateContextType {
   patients: Patient[];
@@ -16,12 +17,40 @@ interface AppStateContextType {
   isLoadingAppointments: boolean;
   addAppointment: (appointmentData: Omit<Appointment, 'id' | 'status'>) => Promise<Appointment>;
   updateAppointmentStatus: (appointmentId: string, status: Appointment['status']) => Promise<void>;
-  getAppointmentsForDoctor: (doctorId: string) => Appointment[]; // This can remain synchronous if appointments are already loaded
+  getAppointmentsForDoctor: (doctorId: string) => Appointment[];
   refreshAppointments: () => Promise<void>;
   refreshPatients: () => Promise<void>;
 }
 
 export const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
+
+// Helper function to get the latest activity date for a patient
+const getLatestActivityDate = (patient: Patient): Date => {
+  let latestDate = new Date(patient.createdAt); // Fallback to creation date
+
+  if (patient.prescriptions && patient.prescriptions.length > 0) {
+    patient.prescriptions.forEach(prescriptionText => {
+      const match = prescriptionText.match(/Prescribed on: (\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2})/);
+      if (match) {
+        const dateString = match[1];
+        const timeString = match[2];
+        // Use date-fns parse for robust parsing
+        // Format: "yyyy-MM-dd 'at' HH:mm"
+        // Example full string to parse: "2024-07-30 at 15:30"
+        try {
+          const prescriptionDate = parseDate(`${dateString} ${timeString}`, 'yyyy-MM-dd HH:mm', new Date());
+          if (prescriptionDate.getTime() > latestDate.getTime()) {
+            latestDate = prescriptionDate;
+          }
+        } catch (e) {
+          console.warn(`Could not parse date from prescription: "${prescriptionText}"`, e);
+        }
+      }
+    });
+  }
+  return latestDate;
+};
+
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -33,11 +62,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingPatients(true);
     try {
       const fetchedPatients = await patientService.getPatients();
-      // Sort patients by createdAt in descending order (latest first)
+      // Sort patients by latest activity (prescription or creation) in descending order
       fetchedPatients.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
+        const dateA = getLatestActivityDate(a).getTime();
+        const dateB = getLatestActivityDate(b).getTime();
+        return dateB - dateA; // Latest first
       });
       setPatients(fetchedPatients);
     } catch (error) {
@@ -62,43 +91,38 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const seedAndFetchData = async () => {
         await patientService.seedInitialPatientsIfEmpty();
-        fetchPatients(); // Fetch patients after seeding attempt
+        fetchPatients(); 
         fetchAppointments();
     };
     seedAndFetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removed fetchPatients, fetchAppointments from dependency array to avoid re-triggering on their identity change
+  }, []); 
 
 
   const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]}): Promise<Patient> => {
     const newPatient = await patientService.addPatient(patientData);
-    // After adding, refresh all patients to get the correct server-generated timestamp and ensure sorted order
     await fetchPatients(); 
-    return newPatient; // Note: newPatient here will have client-side timestamp, list will have server one after fetch
+    return newPatient; 
   }, [fetchPatients]);
 
   const updatePatientContext = useCallback(async (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt'>>) => {
     await patientService.updatePatient(patientId, updatedData);
-    // After updating, refresh all patients to ensure sorted order and reflect changes
     await fetchPatients();
   }, [fetchPatients]);
 
   const addPrescriptionToPatientContext = useCallback(async (patientId: string, prescriptionText: string) => {
     await patientService.addPrescriptionToPatientFS(patientId, prescriptionText);
-    // After adding prescription, refresh patients to reflect changes (especially if updatedAt were used)
     await fetchPatients(); 
   }, [fetchPatients]);
 
   const addAppointmentContext = useCallback(async (appointmentData: Omit<Appointment, 'id' | 'status'>): Promise<Appointment> => {
     const newAppointment = await appointmentService.addAppointment(appointmentData);
-    // After adding, refresh appointments
     await fetchAppointments();
-    return newAppointment; // Similar to patients, this returns the immediate object. List will be updated.
+    return newAppointment; 
   }, [fetchAppointments]);
 
   const updateAppointmentStatusContext = useCallback(async (appointmentId: string, status: Appointment['status']) => {
     await appointmentService.updateAppointmentStatus(appointmentId, status);
-    // After updating, refresh appointments
     await fetchAppointments();
   }, [fetchAppointments]);
 
@@ -125,3 +149,4 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     </AppStateContext.Provider>
   );
 };
+

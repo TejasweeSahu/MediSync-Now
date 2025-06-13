@@ -22,18 +22,16 @@ export const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center"> {/* Main flex container */}
-        {/* Left section (empty for now, provides balance for centering) */}
-        <div className="flex-1">
-          {/* Placeholder for potential future content like a menu icon */}
-        </div>
-
-        {/* Center section for Logo */}
-        <div className="flex flex-1 justify-center">
+        {/* Left section for Logo */}
+        <div className="flex items-center">
           <Logo iconSize={24} textSize="text-xl" />
         </div>
 
+        {/* Spacer to push content to the right */}
+        <div className="flex-grow"></div>
+
         {/* Right section for Doctor Info & Logout */}
-        <div className="flex flex-1 justify-end">
+        <div className="flex items-center">
           {showDoctorInfoInHeader && (
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm">

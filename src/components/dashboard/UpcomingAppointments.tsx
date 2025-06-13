@@ -5,13 +5,14 @@ import React, { useEffect, useState } from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
 import type { Appointment } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, User, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarDays, User, Clock, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/hooks/use-toast";
 
 interface UpcomingAppointmentsProps {
   onAppointmentSelect: (appointment: Appointment) => void;
@@ -21,9 +22,10 @@ const INITIAL_APPOINTMENTS_TO_DISPLAY = 2;
 const EXPANDED_SCROLL_HEIGHT = "500px";
 
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
-  const { getAppointmentsForDoctor, isLoadingAppointments, appointments, refreshAppointments } = useAppState();
+  const { getAppointmentsForDoctor, isLoadingAppointments, appointments, refreshAppointments, updateAppointmentStatus } = useAppState();
   const { doctor } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (doctor) {
@@ -34,6 +36,31 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  const handleCompleteAppointment = async (
+    event: React.MouseEvent,
+    appointmentId: string,
+    patientName: string
+  ) => {
+    event.stopPropagation(); // Prevent card click from triggering onAppointmentSelect
+    try {
+      await updateAppointmentStatus(appointmentId, 'Completed');
+      toast({
+        title: "Appointment Completed",
+        description: `Appointment for ${patientName} has been marked as completed.`,
+        className: "bg-primary text-primary-foreground",
+      });
+      // The list will refresh due to AppStateContext update, or we can manually refresh if needed
+      // refreshAppointments(); // Usually not needed if context updates trigger re-render
+    } catch (error) {
+      console.error("Error completing appointment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete appointment. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const doctorAppointments = doctor ? getAppointmentsForDoctor(doctor.id) : [];
@@ -96,11 +123,23 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     appointmentsList.map((appointment) => (
       <Card 
         key={appointment.id} 
-        className="bg-background hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => onAppointmentSelect(appointment)}
+        className="bg-background hover:shadow-md transition-shadow"
+        // Make card clickable only if not clicking the complete button
+        onClick={(e) => {
+            // Check if the click target or its parent is the complete button
+            if ((e.target as HTMLElement).closest('[data-complete-button="true"]')) {
+                return;
+            }
+            onAppointmentSelect(appointment);
+        }}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment);}}
+        onKeyDown={(e) => { 
+            if ((e.target as HTMLElement).closest('[data-complete-button="true"]')) {
+                return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment);
+        }}
         aria-label={`Select appointment for ${appointment.patientName}`}
       >
         <CardHeader className="pb-3">
@@ -117,7 +156,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
             Symptoms: {appointment.symptoms}
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
+        <CardContent className="text-sm text-muted-foreground space-y-1 pb-2">
           <div className="flex items-center gap-2">
             <User size={14} /> Age: {appointment.patientAge !== undefined ? appointment.patientAge : 'N/A'}
           </div>
@@ -126,6 +165,20 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
             {appointment.appointmentDate ? format(parseISO(appointment.appointmentDate), "PPpp") : 'Date N/A'}
           </div>
         </CardContent>
+        {appointment.status === 'Scheduled' && (
+            <CardFooter className="pt-1 pb-3 flex justify-end">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleCompleteAppointment(e, appointment.id, appointment.patientName)}
+                    className="text-xs h-8" // Adjusted height
+                    data-complete-button="true" // Custom attribute to identify the button
+                >
+                    <CheckCircle2 size={14} className="mr-1" />
+                    Mark as Complete
+                </Button>
+            </CardFooter>
+        )}
       </Card>
     ))
   );

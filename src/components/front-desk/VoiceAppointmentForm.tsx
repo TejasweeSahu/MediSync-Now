@@ -192,12 +192,8 @@ export const VoiceAppointmentForm: React.FC = () => {
       };
       
       recognition.onend = () => {
-        // Check if it was truly listening and didn't stop programmatically before onend
-        // This 'isListening' is from the closure, so it might be stale if setIsListening was called just before onend.
-        // However, if recognition stops naturally, setIsListening(false) here is the correct action.
         if (isListening) { 
             setIsListening(false);
-            // Avoid toast if transcript was processed or is being parsed.
             if (!transcript && !isParsingTranscript) { 
                 toast({ title: "No speech detected", description: "Please try speaking again.", variant: "default"});
             }
@@ -214,10 +210,9 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processTranscriptWithAI, toast]); // isListening, transcript, isParsingTranscript are handled by their setters or direct logic
+  }, [processTranscriptWithAI, toast]); 
 
 
-  // Reset spacebar listening flag if listening stops for any reason
   useEffect(() => {
     if (!isListening) {
       listeningStartedBySpacebarRef.current = false;
@@ -231,7 +226,7 @@ export const VoiceAppointmentForm: React.FC = () => {
     }
     if (isListening) {
       recognitionRef.current.stop();
-      setIsListening(false); // This will trigger the useEffect above to reset listeningStartedBySpacebarRef
+      setIsListening(false); 
     } else {
       setTranscript(''); 
       recognitionRef.current.start();
@@ -245,14 +240,16 @@ export const VoiceAppointmentForm: React.FC = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === ' ' && !event.repeat && !isSpacebarDownRef.current) {
         const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || (activeElement as HTMLElement).isContentEditable)) {
           return; 
         }
         
+        event.preventDefault(); // Prevent page scroll
         isSpacebarDownRef.current = true;
+        
         longPressTimerRef.current = setTimeout(() => {
           if (speechApiAvailable && !isListening && !isParsingTranscript) {
-            listeningStartedBySpacebarRef.current = true; // Mark that spacebar started this session
+            listeningStartedBySpacebarRef.current = true;
             toggleListening();
           }
         }, LONG_PRESS_DURATION);
@@ -267,9 +264,10 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
         if (isSpacebarDownRef.current) {
           if (listeningStartedBySpacebarRef.current && isListening && recognitionRef.current) {
-            recognitionRef.current.stop(); // Stop listening; onend will set isListening to false
+            recognitionRef.current.stop();
           }
           isSpacebarDownRef.current = false;
+          // listeningStartedBySpacebarRef.current will be reset by the isListening useEffect
         }
       }
     };
@@ -544,3 +542,4 @@ export const VoiceAppointmentForm: React.FC = () => {
   );
 };
     
+

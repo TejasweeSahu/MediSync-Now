@@ -50,10 +50,10 @@ Transcript:
 Current Date (for reference): {{{currentDate}}}
 
 Guidelines for extraction:
-- Carefully analyze the ENTIRE transcript, especially if it is long or contains many details. Attempt to extract information for ALL requested fields (patientName, patientAge, symptoms, doctorQuery, appointmentDateYYYYMMDD, appointmentTimeHHMM) if present in the transcript.
-- If any piece of information is not clearly mentioned, omit that specific field or return it as undefined. Do not guess or infer information that isn't stated.
+- Review the ENTIRE transcript. Prioritize extracting key appointment details for all requested fields (patientName, patientAge, symptoms, doctorQuery, appointmentDateYYYYMMDD, appointmentTimeHHMM) if clearly present. Aim for both accuracy and reasonable speed.
+- If a piece of information is not clearly mentioned or is ambiguous, omit that specific field or return it as undefined. Do not guess or infer information that isn't stated.
 - For patientAge: Extract only if a number is explicitly stated for age (e.g., "30", "thirty five"). Do not infer. If "30 years old" is said, extract 30. If "five" is said for age, extract 5. If "I am thirty" is said, extract 30. If no age or an ambiguous age is mentioned, omit patientAge.
-- For doctorQuery: Focus on the doctor's actual name. For "Dr. Peterson", "Peterson" is preferred. For "Doctor Smith", "Smith" is preferred.
+- For doctorQuery: Focus on the doctor's actual name (e.g., "Peterson", "Mehta"). Avoid titles like "Dr." if possible (e.g., for "Dr. Peterson", "Peterson" is preferred).
 - For appointmentDateYYYYMMDD:
   - Convert relative dates like "today", "tomorrow", "next Monday" into YYYY-MM-DD format based on the provided 'currentDate'.
   - If a specific date is mentioned (e.g., "October 27th"), use that. Assume the current year if not specified.
@@ -62,7 +62,7 @@ Guidelines for extraction:
   - For general times: "morning" use "09:00", "afternoon" use "14:00", "evening" use "18:00".
   - If a specific time is mentioned (e.g., "3 PM", "10:30 AM"), convert it.
 
-Pay close attention when the transcript is long and contains multiple pieces of information to ensure all details are captured.
+When the transcript is long, focus on efficiently identifying and extracting the most relevant appointment-related information. Strive for accuracy without excessive deliberation on minor or unclear details.
 
 Example 1:
 Transcript: "I need to see Dr. Jones for a headache tomorrow morning."
@@ -96,7 +96,7 @@ Output:
   appointmentTimeHHMM: "14:00"
 
 
-Focus on extracting the information as accurately as possible based on the transcript and current date.
+Focus on extracting the information as accurately as possible based on the transcript and current date, while being efficient.
 `,
 });
 

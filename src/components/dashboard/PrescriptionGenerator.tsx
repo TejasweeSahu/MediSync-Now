@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Changed from FormLabel
 import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info, PlusCircle } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput, MedicationDetail } from '@/ai/flows/suggest-prescription';
@@ -259,7 +259,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         route: '',
         additionalInstructions: ''
       };
-      const updatedMedications = prev.medications ? [...prev.medications, newMedication] : [newMedication];
+      const updatedMedications = prev.medications ? [newMedication, ...prev.medications] : [newMedication];
       return { ...prev, medications: updatedMedications };
     });
   };

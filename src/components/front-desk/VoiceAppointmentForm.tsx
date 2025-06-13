@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { parseAppointmentTranscript } from '@/ai/flows/parse-appointment-transcript-flow';
 import type { ParseAppointmentTranscriptInput, ParseAppointmentTranscriptOutput } from '@/ai/flows/parse-appointment-transcript-flow';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 
 const appointmentFormSchema = z.object({
@@ -150,7 +150,7 @@ export const VoiceAppointmentForm: React.FC = () => {
     } catch (error: any) {
       console.error('Error parsing transcript with AI:', error);
        let errorMessage = "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.";
-      if (error.message && (error.message.includes('503 Service Unavailable') || error.message.includes('overloaded') || error.message.includes('The model is overloaded'))) {
+      if (error.message && (error.message.includes('503 Service Unavailable') || error.message.includes('overloaded') || error.message.includes('The model is overloaded') || error.message.includes('RESOURCE_EXHAUSTED'))) {
         errorMessage = "The AI model is currently overloaded or unavailable. Please try again in a few moments, or fill the form manually.";
       }
       toast({ 
@@ -223,7 +223,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processTranscriptWithAI, toast]); 
+  }, [processTranscriptWithAI, toast]); // Removed toggleListening from dependencies as it's stable
 
 
   const capitalizeFirstLetter = (string: string) => {
@@ -278,32 +278,37 @@ export const VoiceAppointmentForm: React.FC = () => {
           <CardTitle className="text-2xl font-headline">
             Voice Appointment Booking
           </CardTitle>
-          <CardDescription>Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
+          <CardDescription>
+            Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.
+            <br />For best results, try saying details like: <em>"Book for Priya Singh, 30 years old, for cough and fever, with Dr. Mehta, for tomorrow afternoon."</em>
+          </CardDescription>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              onClick={toggleListening}
-              variant={isListening ? "destructive" : "default"}
-              size="icon"
-              className="rounded-full w-14 h-14 flex-shrink-0" 
-              disabled={!speechApiAvailable || isParsingTranscript}
-              aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
-            >
-              {isListening ? (
-                <MicOff className="h-6 w-6" />
-              ) : isParsingTranscript ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <Mic className="h-6 w-6" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{isListening ? "Stop Listening" : isParsingTranscript ? "Processing..." : "Start Voice Input"}</p>
-          </TooltipContent>
-        </Tooltip>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                onClick={toggleListening}
+                variant={isListening ? "destructive" : "default"}
+                size="icon"
+                className="rounded-full w-14 h-14 flex-shrink-0" 
+                disabled={!speechApiAvailable || isParsingTranscript}
+                aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
+              >
+                {isListening ? (
+                  <MicOff className="h-6 w-6" />
+                ) : isParsingTranscript ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Mic className="h-6 w-6" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isListening ? "Stop Listening" : isParsingTranscript ? "Processing..." : speechApiAvailable ? "Start Voice Input" : "Voice input unavailable"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -485,3 +490,4 @@ export const VoiceAppointmentForm: React.FC = () => {
   );
 };
     
+

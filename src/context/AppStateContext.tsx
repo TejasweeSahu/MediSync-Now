@@ -10,8 +10,8 @@ import { parse as parseDate } from 'date-fns'; // Import parse from date-fns
 interface AppStateContextType {
   patients: Patient[];
   isLoadingPatients: boolean;
-  addPatient: (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]}) => Promise<Patient>;
-  updatePatient: (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt'>>) => Promise<void>;
+  addPatient: (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]}) => Promise<Patient>;
+  updatePatient: (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt' | 'displayActivityTimestamp'>>) => Promise<void>;
   addPrescriptionToPatient: (patientId: string, prescriptionText: string) => Promise<void>;
   appointments: Appointment[];
   isLoadingAppointments: boolean;
@@ -34,9 +34,6 @@ const getLatestActivityDate = (patient: Patient): Date => {
       if (match) {
         const dateString = match[1];
         const timeString = match[2];
-        // Use date-fns parse for robust parsing
-        // Format: "yyyy-MM-dd 'at' HH:mm"
-        // Example full string to parse: "2024-07-30 at 15:30"
         try {
           const prescriptionDate = parseDate(`${dateString} ${timeString}`, 'yyyy-MM-dd HH:mm', new Date());
           if (prescriptionDate.getTime() > latestDate.getTime()) {
@@ -62,13 +59,21 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setIsLoadingPatients(true);
     try {
       const fetchedPatients = await patientService.getPatients();
+      
       // Sort patients by latest activity (prescription or creation) in descending order
       fetchedPatients.sort((a, b) => {
         const dateA = getLatestActivityDate(a).getTime();
         const dateB = getLatestActivityDate(b).getTime();
         return dateB - dateA; // Latest first
       });
-      setPatients(fetchedPatients);
+
+      // After sorting, map to add the displayActivityTimestamp
+      const patientsWithDisplayTimestamp = fetchedPatients.map(patient => ({
+        ...patient,
+        displayActivityTimestamp: getLatestActivityDate(patient).toISOString(),
+      }));
+
+      setPatients(patientsWithDisplayTimestamp);
     } catch (error) {
       console.error("Error fetching patients:", error);
     } finally {
@@ -99,13 +104,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   }, []); 
 
 
-  const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]}): Promise<Patient> => {
+  const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]}): Promise<Patient> => {
     const newPatient = await patientService.addPatient(patientData);
     await fetchPatients(); 
-    return newPatient; 
-  }, [fetchPatients]);
+    // The newPatient from service won't have displayActivityTimestamp; fetchPatients will add it.
+    // For immediate use, find it in the refreshed list or add it manually if needed.
+    const refreshedPatient = patients.find(p => p.id === newPatient.id) || {
+        ...newPatient,
+        displayActivityTimestamp: getLatestActivityDate(newPatient).toISOString(),
+    };
+    return refreshedPatient;
+  }, [fetchPatients, patients]);
 
-  const updatePatientContext = useCallback(async (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt'>>) => {
+  const updatePatientContext = useCallback(async (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt' | 'displayActivityTimestamp'>>) => {
     await patientService.updatePatient(patientId, updatedData);
     await fetchPatients();
   }, [fetchPatients]);
@@ -149,4 +160,3 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     </AppStateContext.Provider>
   );
 };
-

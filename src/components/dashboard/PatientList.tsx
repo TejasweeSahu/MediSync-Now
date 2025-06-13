@@ -109,65 +109,68 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                   <TableHead className="text-center">Age</TableHead>
                   <TableHead>Diagnosis</TableHead>
                   <TableHead className="hidden md:table-cell">History</TableHead>
-                  <TableHead className="text-center">Time</TableHead>
+                  <TableHead className="text-center">Last Activity</TableHead>
                   <TableHead className="text-center">Prescribed</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayedPatients.map((patient) => (
-                  <TableRow
-                    key={patient.id}
-                    className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" }
-                    onClick={onSelectPatient ? (e) => {
-                      if ((e.target as HTMLElement).closest('button[data-action-button]')) return;
-                      onSelectPatient(patient);
-                    } : undefined}
-                  >
-                    <TableCell>
-                      <Avatar>
-                        <AvatarImage src={patient.avatarUrl || `https://placehold.co/40x40.png`} alt={patient.name} data-ai-hint="person medical" />
-                        <AvatarFallback>{patient.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium">{patient.name}</TableCell>
-                    <TableCell className="text-center">{patient.age}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="whitespace-nowrap">{patient.diagnosis}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground hidden md:table-cell truncate max-w-xs">{patient.history}</TableCell>
-                    <TableCell className="text-center text-xs text-muted-foreground">
-                      {patient.createdAt ? format(parseISO(patient.createdAt), 'p') : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {patient.prescriptions && patient.prescriptions.length > 0 ? (
+                {displayedPatients.map((patient) => {
+                  const activityDateToDisplay = patient.displayActivityTimestamp || patient.createdAt;
+                  return (
+                    <TableRow
+                      key={patient.id}
+                      className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" }
+                      onClick={onSelectPatient ? (e) => {
+                        if ((e.target as HTMLElement).closest('button[data-action-button]')) return;
+                        onSelectPatient(patient);
+                      } : undefined}
+                    >
+                      <TableCell>
+                        <Avatar>
+                          <AvatarImage src={patient.avatarUrl || `https://placehold.co/40x40.png`} alt={patient.name} data-ai-hint="person medical" />
+                          <AvatarFallback>{patient.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium">{patient.name}</TableCell>
+                      <TableCell className="text-center">{patient.age}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="whitespace-nowrap">{patient.diagnosis}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground hidden md:table-cell truncate max-w-xs">{patient.history}</TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {activityDateToDisplay ? format(parseISO(activityDateToDisplay), 'MMM d, p') : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {patient.prescriptions && patient.prescriptions.length > 0 ? (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="p-0 h-auto text-xs flex items-center justify-center gap-1"
+                            onClick={(e) => handleViewPrescriptions(patient, e)}
+                            data-action-button // Prevents row click
+                          >
+                            <FileText size={12} />
+                            {patient.prescriptions.length}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Button
-                          variant="link"
-                          size="sm"
-                          className="p-0 h-auto text-xs flex items-center justify-center gap-1"
-                          onClick={(e) => handleViewPrescriptions(patient, e)}
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); handleEdit(patient);}}
                           data-action-button // Prevents row click
+                          aria-label={`Edit patient ${patient.name}`}
                         >
-                          <FileText size={12} />
-                          {patient.prescriptions.length}
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => { e.stopPropagation(); handleEdit(patient);}}
-                        data-action-button // Prevents row click
-                        aria-label={`Edit patient ${patient.name}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -228,4 +231,3 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     </>
   );
 };
-

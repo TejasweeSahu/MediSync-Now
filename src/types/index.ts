@@ -8,6 +8,7 @@ export interface Patient {
   avatarUrl?: string;
   prescriptions?: string[]; // Added to store prescription texts
   createdAt: string; // Added for sorting
+  displayActivityTimestamp?: string; // For displaying the latest activity date/time
 }
 
 export interface Appointment {

@@ -109,7 +109,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                   <TableHead className="text-center">Age</TableHead>
                   <TableHead>Diagnosis</TableHead>
                   <TableHead className="hidden md:table-cell">History</TableHead>
-                  <TableHead className="text-center">Created Time</TableHead>
+                  <TableHead className="text-center">Time</TableHead>
                   <TableHead className="text-center">Prescribed</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>

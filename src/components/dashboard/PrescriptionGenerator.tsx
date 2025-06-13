@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
+import { format as formatDateFn } from 'date-fns';
 
 const formSchema = z.object({
   symptoms: z.string().min(10, { message: "Symptoms must be at least 10 characters." }),
@@ -99,7 +100,11 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   };
   
   const formatPrescriptionForSaving = (suggestionData: SuggestPrescriptionOutput): string => {
-    let formattedString = "Prescription:\n";
+    const now = new Date();
+    const dateTimeString = formatDateFn(now, "yyyy-MM-dd 'at' HH:mm");
+    let formattedString = `Prescribed on: ${dateTimeString}\n\n`;
+
+    formattedString += "Prescription Details:\n";
 
     if (suggestionData.medications && suggestionData.medications.length > 0) {
       formattedString += "\nMedications:\n";

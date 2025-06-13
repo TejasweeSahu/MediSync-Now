@@ -317,13 +317,6 @@ export const VoiceAppointmentForm: React.FC = () => {
               <p className="text-sm text-muted-foreground italic text-center">Transcript: "{transcript}"</p>
             )}
 
-            {isParsingTranscript && (
-              <div className="flex items-center justify-center p-3 my-2 rounded-md bg-muted/30 border border-dashed border-primary/50">
-                <Loader2 className="mr-3 h-5 w-5 animate-spin text-primary" />
-                <p className="text-sm text-primary font-medium">AI is populating the form from your transcript...</p>
-              </div>
-            )}
-
             <FormField
               control={form.control}
               name="patientName"

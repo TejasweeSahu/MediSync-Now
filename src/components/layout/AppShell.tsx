@@ -28,8 +28,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/front-desk', label: 'Front Desk', icon: Mic },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ];
 
 export const AppShell = ({ children }: { children: ReactNode }) => {

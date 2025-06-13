@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Pencil, Loader2, FileText } from 'lucide-react';
+import { Users, Pencil, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
@@ -23,15 +24,25 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
   const { patients, isLoadingPatients } = useAppState();
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [patientToViewPrescriptions, setPatientToViewPrescriptions] = useState<Patient | null>(null);
 
   const handleEdit = (patient: Patient) => {
     setEditingPatient(patient);
     setIsEditDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
+  const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
     setEditingPatient(null);
+  };
+
+  const handleViewPrescriptions = (patient: Patient, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent row click event
+    setPatientToViewPrescriptions(patient);
+  };
+
+  const handleClosePrescriptionsDialog = () => {
+    setPatientToViewPrescriptions(null);
   };
 
   if (isLoadingPatients) {
@@ -98,7 +109,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                     key={patient.id} 
                     className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" } 
                     onClick={onSelectPatient ? (e) => {
-                      if ((e.target as HTMLElement).closest('button[data-edit-button]')) return;
+                      if ((e.target as HTMLElement).closest('button[data-action-button]')) return;
                       onSelectPatient(patient);
                     } : undefined}
                   >
@@ -116,10 +127,16 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                     <TableCell className="text-sm text-muted-foreground hidden md:table-cell truncate max-w-xs">{patient.history}</TableCell>
                     <TableCell className="text-center">
                       {patient.prescriptions && patient.prescriptions.length > 0 ? (
-                        <Badge variant="outline" className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="p-0 h-auto text-xs flex items-center justify-center gap-1"
+                          onClick={(e) => handleViewPrescriptions(patient, e)}
+                          data-action-button // Prevents row click
+                        >
                           <FileText size={12} />
                           {patient.prescriptions.length}
-                        </Badge>
+                        </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}
@@ -129,7 +146,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                         variant="ghost" 
                         size="icon" 
                         onClick={(e) => { e.stopPropagation(); handleEdit(patient);}}
-                        data-edit-button 
+                        data-action-button // Prevents row click
                         aria-label={`Edit patient ${patient.name}`}
                       >
                         <Pencil className="h-4 w-4" />
@@ -152,10 +169,37 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                 Make changes to the patient's details below. Click save when you're done.
               </DialogDescription>
             </DialogHeader>
-            <EditPatientForm patient={editingPatient} onClose={handleCloseDialog} />
+            <EditPatientForm patient={editingPatient} onClose={handleCloseEditDialog} />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {patientToViewPrescriptions && (
+        <Dialog open={!!patientToViewPrescriptions} onOpenChange={(isOpen) => !isOpen && handleClosePrescriptionsDialog()}>
+          <DialogContent className="sm:max-w-md md:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Prescriptions for {patientToViewPrescriptions.name}</DialogTitle>
+              <DialogDescription>
+                Showing {patientToViewPrescriptions.prescriptions?.length || 0} prior prescription(s).
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px] mt-4 pr-3">
+              <div className="space-y-3 p-1">
+                {patientToViewPrescriptions.prescriptions && patientToViewPrescriptions.prescriptions.length > 0 ? (
+                  patientToViewPrescriptions.prescriptions.map((prescription, index) => (
+                    <div key={index} className="text-xs p-3 border rounded-md bg-background shadow-sm whitespace-pre-wrap">
+                      {prescription}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No prescriptions on record.</p>
+                )}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       )}
     </>
   );
 };
+

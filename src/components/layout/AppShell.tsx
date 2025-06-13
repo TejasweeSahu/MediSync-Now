@@ -15,6 +15,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { Logo } from '@/components/shared/Logo';
@@ -44,7 +45,6 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading || !isAuthenticated) {
-    // Simplified loading state as per previous discussion
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 p-4 text-center">
@@ -69,7 +69,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
 
   return (
     <SidebarProvider defaultOpen>
-      <Sidebar Scollapsible="icon" side="left" variant="sidebar">
+      <Sidebar collapsible="icon" side="left" variant="sidebar">
         <SidebarHeader className="p-4">
           <Logo />
         </SidebarHeader>
@@ -106,3 +106,4 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
     </SidebarProvider>
   );
 };
+

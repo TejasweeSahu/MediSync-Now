@@ -1,35 +1,62 @@
 
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/shared/Logo';
-import { Skeleton } from '@/components/ui/skeleton';
-
+import { Stethoscope, Users } from 'lucide-react';
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
-      }
-    }
-  }, [isAuthenticated, isLoading, router]);
-
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-background gap-4">
-      <Logo iconSize={48} textSize="text-4xl" />
-      <div className="mt-4 flex flex-col items-center gap-2">
-        <Skeleton className="h-4 w-[250px]" />
-        <Skeleton className="h-4 w-[200px]" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
+      <div className="mb-12 text-center">
+        <Logo iconSize={56} textSize="text-5xl" />
+        <p className="mt-2 text-lg text-muted-foreground">Streamlined Healthcare Management</p>
       </div>
-      <p className="text-muted-foreground mt-2">Loading MediSync Now...</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl w-full">
+        <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1">
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-10 w-10 text-primary" />
+              <CardTitle className="text-3xl font-headline">Front Desk</CardTitle>
+            </div>
+            <CardDescription className="text-base min-h-[40px]">
+              Manage appointments and patient interactions efficiently.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/front-desk" passHref>
+              <Button className="w-full text-lg py-6" size="lg">
+                Access Front Desk
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300 ease-in-out transform hover:-translate-y-1">
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <Stethoscope className="h-10 w-10 text-primary" />
+              <CardTitle className="text-3xl font-headline">Doctor Portal</CardTitle>
+            </div>
+            <CardDescription className="text-base min-h-[40px]">
+              View patient records, manage prescriptions, and check your schedule.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/login" passHref>
+              <Button className="w-full text-lg py-6" size="lg">
+                Doctor Login
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+      <footer className="mt-16 text-center text-muted-foreground text-sm">
+        <p>&copy; {new Date().getFullYear()} MediSync Now. All rights reserved.</p>
+      </footer>
     </div>
   );
 }

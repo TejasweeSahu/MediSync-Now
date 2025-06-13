@@ -114,8 +114,8 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     const dateTimeString = formatDateFn(now, "yyyy-MM-dd 'at' HH:mm");
     let formattedString = `Prescribed on: ${dateTimeString}\n\n`;
     
-    formattedString += `Symptoms at time of prescription: ${symptoms}\n`;
-    formattedString += `Diagnosis at time of prescription: ${diagnosis}\n\n`;
+    formattedString += `Symptoms: ${symptoms}\n`;
+    formattedString += `Diagnosis: ${diagnosis}\n\n`;
 
     formattedString += "Prescription Details:\n";
 

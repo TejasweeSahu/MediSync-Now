@@ -143,7 +143,9 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <AlertDescription>
                   Age: {selectedPatient.age}, Diagnosis: {selectedPatient.diagnosis}
                   {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
-                    <span className="block mt-1 text-xs">({selectedPatient.prescriptions.length} prior prescription(s) on record)</span>
+                    <span className="block mt-1 text-xs text-muted-foreground">
+                      ({selectedPatient.prescriptions.length} prior prescription(s) on record)
+                    </span>
                   )}
                 </AlertDescription>
               </Alert>

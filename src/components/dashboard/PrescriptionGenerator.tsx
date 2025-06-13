@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useAppState } from '@/hooks/useAppState';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   symptoms: z.string().min(10, { message: "Symptoms must be at least 10 characters." }),
@@ -30,14 +30,15 @@ type PrescriptionFormValues = z.infer<typeof formSchema>;
 
 interface PrescriptionGeneratorProps {
   selectedPatient?: Patient | null;
+  triggerAutoSuggestion?: boolean; // New prop
 }
 
-export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient }) => {
+export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient, triggerAutoSuggestion = false }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestPrescriptionOutput | null>(null);
   const { toast } = useToast();
   const { addPrescriptionToPatient, patients: allPatients } = useAppState();
-  const { doctor } = useAuth(); // Get the logged-in doctor
+  const { doctor } = useAuth();
 
   const form = useForm<PrescriptionFormValues>({
     resolver: zodResolver(formSchema),
@@ -50,25 +51,22 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
   useEffect(() => {
     if (selectedPatient) {
-      // Pre-fill form fields
       form.reset({
-        symptoms: selectedPatient.diagnosis || '', // Use diagnosis as initial symptoms for auto-suggestion
+        symptoms: selectedPatient.diagnosis || '', 
         diagnosis: selectedPatient.diagnosis || '',
         patientHistory: selectedPatient.history || '',
       });
-      setSuggestion(null); // Clear previous main suggestion
+      setSuggestion(null); 
 
-      // Auto-generate initial suggestion if key info (diagnosis/symptoms proxy) is present
       const symptomsForAISuggestion = selectedPatient.diagnosis;
 
-      if (symptomsForAISuggestion && doctor?.name) {
+      if (triggerAutoSuggestion && symptomsForAISuggestion && doctor?.name) {
         setIsLoading(true);
         suggestPrescription({
           symptoms: symptomsForAISuggestion,
           diagnosis: selectedPatient.diagnosis || symptomsForAISuggestion,
           patientHistory: selectedPatient.history || 'N/A',
           doctorName: doctor.name,
-          // doctorPreferences: undefined, // No preferences data yet
         })
         .then(result => {
           setSuggestion(result);
@@ -88,14 +86,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         .finally(() => {
           setIsLoading(false);
         });
+      } else {
+        setIsLoading(false); // Ensure loading is false if not auto-suggesting
       }
     } else {
-      // Clear form and suggestion if no patient selected
       form.reset({ symptoms: '', diagnosis: '', patientHistory: '' });
       setSuggestion(null);
+      setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient, form, doctor?.name, toast]); // Added doctor.name and toast
+  }, [selectedPatient, triggerAutoSuggestion, form, doctor?.name, toast]);
 
   const onSubmit: SubmitHandler<PrescriptionFormValues> = async (data) => {
     setIsLoading(true);
@@ -105,8 +105,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         symptoms: data.symptoms,
         diagnosis: data.diagnosis,
         patientHistory: data.patientHistory || 'N/A',
-        doctorName: doctor?.name, // Pass doctor's name
-        // doctorPreferences: undefined, // No preferences data yet
+        doctorName: doctor?.name,
       };
       const result = await suggestPrescription(aiInput);
       setSuggestion(result);
@@ -250,18 +249,18 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isLoading || !selectedPatient}>
-              {isLoading && !suggestion ? ( // Show loader only if loading and no suggestion yet (distinguish from auto-load)
+              {isLoading && !suggestion && !triggerAutoSuggestion ? ( 
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              {isLoading && !suggestion ? 'Generating...' : 'Suggest New / Refine'}
+              {isLoading && !suggestion && !triggerAutoSuggestion ? 'Generating...' : 'Suggest New / Refine'}
             </Button>
           </CardFooter>
         </form>
       </Form>
 
-      {isLoading && suggestion && ( // Show a subtle loading indicator if reloading a suggestion
+      {isLoading && suggestion && triggerAutoSuggestion && ( 
          <CardContent className="pt-2 pb-0 text-center">
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Refreshing suggestion...</p>
         </CardContent>
@@ -269,8 +268,8 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
       {suggestion && (
         <CardContent className="mt-6 border-t pt-6">
-          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2"><FileText className="text-accent" /> {isLoading ? "Loading Suggestion..." : "Current AI Suggestion"}</h3>
-          {!isLoading && (
+          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2"><FileText className="text-accent" /> {isLoading && triggerAutoSuggestion ? "Loading Suggestion..." : "Current AI Suggestion"}</h3>
+          {!(isLoading && triggerAutoSuggestion) && (
             <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
               <div>
                 <strong className="block text-sm font-medium text-foreground">Suggestion:</strong>

@@ -12,20 +12,19 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [shouldAutoSuggestPrescription, setShouldAutoSuggestPrescription] = useState<boolean>(false);
   const prescriptionSectionRef = useRef<HTMLDivElement>(null);
   const { patients } = useAppState();
   const { toast } = useToast();
 
-  const handleSelectPatientAndScroll = (patient: Patient | null) => {
+  const handleSelectPatientAndScroll = (patient: Patient | null, autoSuggest: boolean = false) => {
     setSelectedPatient(patient);
+    setShouldAutoSuggestPrescription(autoSuggest);
+
     if (patient && prescriptionSectionRef.current) {
-      // Wait for the state to update and DOM to re-render if necessary
       setTimeout(() => {
         prescriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100); // A small delay can help ensure the section is ready
-    } else if (!patient && prescriptionSectionRef.current) {
-        // Optionally scroll to top or a default position if patient is deselected
-        // window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100); 
     }
   };
 
@@ -37,7 +36,7 @@ export default function DashboardPage() {
             description: "Invalid appointment data.",
             variant: "destructive",
         });
-        handleSelectPatientAndScroll(null);
+        handleSelectPatientAndScroll(null, false);
         return;
     }
 
@@ -47,21 +46,19 @@ export default function DashboardPage() {
     );
 
     if (patientToSelect) {
-      handleSelectPatientAndScroll(patientToSelect);
+      handleSelectPatientAndScroll(patientToSelect, true); // Auto-suggest for appointments
     } else {
-      // Patient not found in main records, create a temporary patient object
       console.warn(`Patient with name "${patientName}" not found in main records. Creating temporary patient from appointment.`);
       
       const temporaryPatient: Patient = {
-        id: `temp-appointment-${appointment.id}`, // Unique temporary ID
+        id: `temp-appointment-${appointment.id}`, 
         name: appointment.patientName,
-        age: appointment.patientAge !== undefined ? appointment.patientAge : 0, // Default age if not provided
-        diagnosis: appointment.symptoms, // Use appointment symptoms as initial diagnosis
+        age: appointment.patientAge !== undefined ? appointment.patientAge : 0,
+        diagnosis: appointment.symptoms, 
         history: 'Patient details loaded from appointment. Verify and complete medical history.',
-        // avatarUrl will be undefined
       };
       
-      handleSelectPatientAndScroll(temporaryPatient);
+      handleSelectPatientAndScroll(temporaryPatient, true); // Auto-suggest for appointments
       toast({
         title: "Temporary Patient Loaded",
         description: `Details for ${appointment.patientName} loaded from appointment. This is not a saved patient record.`,
@@ -77,7 +74,8 @@ export default function DashboardPage() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <PatientList onSelectPatient={handleSelectPatientAndScroll} />
+            {/* Pass autoSuggest=false for PatientList selections */}
+            <PatientList onSelectPatient={(patient) => handleSelectPatientAndScroll(patient, false)} />
           </div>
           <div className="lg:col-span-1 space-y-6">
             <UpcomingAppointments onAppointmentSelect={handleAppointmentClick} />
@@ -87,7 +85,10 @@ export default function DashboardPage() {
         <Separator className="my-8" />
         
         <div ref={prescriptionSectionRef}>
-          <PrescriptionGenerator selectedPatient={selectedPatient} />
+          <PrescriptionGenerator 
+            selectedPatient={selectedPatient} 
+            triggerAutoSuggestion={shouldAutoSuggestPrescription} 
+          />
         </div>
 
       </div>

@@ -510,25 +510,23 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 />
               </div>
 
-              <Alert variant={editedSuggestion.medications && editedSuggestion.medications.length > 0 ? "default" : "destructive"}>
-                <div className="flex justify-between items-center">
-                    <AlertTitle>Additional Notes for Doctor (Optional)</AlertTitle>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                    <Label className="block text-md font-medium text-foreground">Additional Notes for Doctor (Optional)</Label>
                     {editedSuggestion.additionalNotes && (
-                         <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 -mt-1 text-muted-foreground group-[.destructive]:text-destructive-foreground/70 hover:text-destructive group-[.destructive]:hover:text-destructive-foreground" onClick={() => handleGenericFieldChange('additionalNotes', '')} aria-label="Clear additional notes">
+                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleGenericFieldChange('additionalNotes', '')} aria-label="Clear additional notes">
                             <XCircle size={16} />
                         </Button>
                     )}
                 </div>
-                {editedSuggestion.medications && editedSuggestion.medications.length > 0 ? <Info className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                
                 <Textarea 
                     value={editedSuggestion.additionalNotes || ''} 
                     onChange={(e) => handleGenericFieldChange('additionalNotes', e.target.value)}
                     placeholder="Critical warnings, interactions, etc."
                     rows={3}
-                    className="text-sm mt-2 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                    className="text-sm p-3 border rounded-md bg-background shadow-sm"
                 />
-              </Alert>
+              </div>
               
               <div className="flex justify-end mt-4">
                 <Button onClick={handleSavePrescription} disabled={!selectedPatient || !editedSuggestion || isSaving || isAISuggesting}>
@@ -547,3 +545,4 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
+

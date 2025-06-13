@@ -78,11 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to access localStorage:", error);
     }
   };
-  
-  if (isLoading && typeof window === 'undefined') {
-    return null; // Avoid rendering anything on the server during initial load if dependent on localStorage
-  }
-
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, doctor, login, logout, isLoading }}>

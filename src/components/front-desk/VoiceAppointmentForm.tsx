@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Mic, MicOff, User, Activity, BriefcaseMedical, CalendarIcon as LucideCalendarIcon, Loader2, Sparkles } from 'lucide-react';
+import { Mic, MicOff, User, Activity, BriefcaseMedical, CalendarIcon as LucideCalendarIcon, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useAppState } from '@/hooks/useAppState';
 import { mockDoctors } from '@/data/mockData';
 import type { Doctor } from '@/types';
@@ -43,6 +43,14 @@ declare global {
   }
 }
 
+const defaultFormValues: Partial<AppointmentFormValues> = {
+    patientName: '',
+    patientAge: undefined,
+    symptoms: '',
+    doctorId: undefined,
+    appointmentDate: undefined,
+};
+
 export const VoiceAppointmentForm: React.FC = () => {
   const { addAppointment } = useAppState();
   const { toast } = useToast();
@@ -54,11 +62,7 @@ export const VoiceAppointmentForm: React.FC = () => {
   
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
-    defaultValues: {
-      patientName: '',
-      symptoms: '',
-      // Let doctorId and appointmentDate be undefined initially
-    },
+    defaultValues: defaultFormValues,
   });
 
   useEffect(() => {
@@ -210,7 +214,7 @@ export const VoiceAppointmentForm: React.FC = () => {
       setTranscript(''); 
       // Reset only AI-fillable fields, keep doctor/date if manually set
       form.reset({ 
-        ...form.getValues(), // Keep existing values like doctorId and appointmentDate
+        ...form.getValues(), 
         patientName: '', 
         patientAge: undefined, 
         symptoms: '' 
@@ -242,14 +246,17 @@ export const VoiceAppointmentForm: React.FC = () => {
     };
     addAppointment(appointmentData);
     toast({ title: "Appointment Booked!", description: `Appointment for ${data.patientName} with ${selectedDoctor.name} has been scheduled.`});
-    form.reset({
-        patientName: '',
-        patientAge: undefined,
-        symptoms: '',
-        doctorId: undefined, 
-        appointmentDate: undefined,
-    }); 
+    form.reset(defaultFormValues); 
     setTranscript('');
+  };
+
+  const handleClearForm = () => {
+    form.reset(defaultFormValues);
+    setTranscript('');
+    toast({
+      title: "Form Cleared",
+      description: "All fields have been reset.",
+    });
   };
 
   return (
@@ -431,8 +438,22 @@ export const VoiceAppointmentForm: React.FC = () => {
               )}
             />
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || isParsingTranscript || isListening}>
+          <CardFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleClearForm} 
+              className="w-full sm:w-auto"
+              disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear Form
+            </Button>
+            <Button 
+              type="submit" 
+              className="w-full sm:w-auto" 
+              disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
+            >
               {(form.formState.isSubmitting || isParsingTranscript) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Book Appointment
             </Button>
@@ -442,3 +463,4 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
+

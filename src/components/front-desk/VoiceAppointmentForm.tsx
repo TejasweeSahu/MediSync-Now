@@ -50,8 +50,6 @@ const defaultFormValues: Partial<AppointmentFormValues> = {
     appointmentDate: undefined,
 };
 
-const LONG_PRESS_DURATION = 500; // milliseconds
-
 export const VoiceAppointmentForm: React.FC = () => {
   const { addAppointment } = useAppState();
   const { toast } = useToast();
@@ -60,9 +58,6 @@ export const VoiceAppointmentForm: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [speechApiAvailable, setSpeechApiAvailable] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isSpacebarDownRef = useRef(false);
-  const listeningStartedBySpacebarRef = useRef(false);
   
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
@@ -213,12 +208,6 @@ export const VoiceAppointmentForm: React.FC = () => {
   }, [processTranscriptWithAI, toast]); 
 
 
-  useEffect(() => {
-    if (!isListening) {
-      listeningStartedBySpacebarRef.current = false;
-    }
-  }, [isListening]);
-
   const toggleListening = useCallback(() => {
     if (!speechApiAvailable) {
       toast({ title: "Feature Unavailable", description: "Speech recognition is not supported in your browser.", variant: "destructive"});
@@ -234,55 +223,6 @@ export const VoiceAppointmentForm: React.FC = () => {
       toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
     }
   }, [speechApiAvailable, isListening, toast, setTranscript]);
-
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === ' ' && !event.repeat && !isSpacebarDownRef.current) {
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || (activeElement as HTMLElement).isContentEditable)) {
-          return; 
-        }
-        
-        event.preventDefault(); // Prevent page scroll
-        isSpacebarDownRef.current = true;
-        
-        longPressTimerRef.current = setTimeout(() => {
-          if (speechApiAvailable && !isListening && !isParsingTranscript) {
-            listeningStartedBySpacebarRef.current = true;
-            toggleListening();
-          }
-        }, LONG_PRESS_DURATION);
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === ' ') {
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-        if (isSpacebarDownRef.current) {
-          if (listeningStartedBySpacebarRef.current && isListening && recognitionRef.current) {
-            recognitionRef.current.stop();
-          }
-          isSpacebarDownRef.current = false;
-          // listeningStartedBySpacebarRef.current will be reset by the isListening useEffect
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-      }
-    };
-  }, [isListening, isParsingTranscript, speechApiAvailable, toggleListening]);
 
 
   const capitalizeFirstLetter = (string: string) => {
@@ -336,7 +276,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         <CardTitle className="flex items-center gap-2 text-2xl font-headline">
           <Mic className="text-primary" /> Voice Appointment Booking
         </CardTitle>
-        <CardDescription>Use your voice (or long-press Spacebar) or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
+        <CardDescription>Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>

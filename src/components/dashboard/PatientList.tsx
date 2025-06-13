@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Pencil, Loader2 } from 'lucide-react';
+import { Users, Pencil, Loader2, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PatientListProps {
@@ -88,6 +88,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                   <TableHead className="text-center">Age</TableHead>
                   <TableHead>Diagnosis</TableHead>
                   <TableHead className="hidden md:table-cell">History</TableHead>
+                  <TableHead className="text-center">Prescribed</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -113,6 +114,16 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                       <Badge variant="secondary" className="whitespace-nowrap">{patient.diagnosis}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground hidden md:table-cell truncate max-w-xs">{patient.history}</TableCell>
+                    <TableCell className="text-center">
+                      {patient.prescriptions && patient.prescriptions.length > 0 ? (
+                        <Badge variant="outline" className="flex items-center justify-center gap-1">
+                          <FileText size={12} />
+                          {patient.prescriptions.length}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button 
                         variant="ghost" 

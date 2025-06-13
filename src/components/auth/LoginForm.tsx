@@ -14,7 +14,7 @@ import { defaultDoctor } from '@/data/mockData'; // To get a default email for p
 
 export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState<string>(defaultDoctor.email); // Default to a mock doctor's email
-  const [password, setPassword] = useState<string>('password'); // Default password for dev
+  const [password, setPassword] = useState<string>('password1'); // Default password for dev
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { login, sendPasswordReset } = useAuth();

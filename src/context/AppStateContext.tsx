@@ -33,7 +33,7 @@ export const AppStateContext = createContext<AppStateContextType | undefined>(un
 
 // Helper function to get the latest activity date for a patient
 const getLatestActivityDate = (patient: Patient): Date => {
-  let latestDate = new Date(patient.createdAt); // Fallback to creation date
+  let latestDate = new Date(patient.createdAt || 0); // Fallback to creation date or epoch if undefined
 
   if (patient.prescriptions && patient.prescriptions.length > 0) {
     patient.prescriptions.forEach(prescriptionText => {
@@ -65,7 +65,6 @@ const getValueForSortField = (patient: Patient, field: SortableField): string | 
     case 'lastActivity':
       return getLatestActivityDate(patient);
     default:
-      // Should not happen with TypeScript, but good practice for robustness
       return getLatestActivityDate(patient);
   }
 };
@@ -84,7 +83,6 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     try {
       let fetchedPatients = await patientService.getPatients();
       
-      // Apply filtering based on searchTerm
       if (searchTerm.trim() !== '') {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         fetchedPatients = fetchedPatients.filter(patient => 
@@ -94,7 +92,6 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         );
       }
       
-      // Apply sorting based on sortConfig
       fetchedPatients.sort((a, b) => {
         const valA = getValueForSortField(a, sortConfig.field);
         const valB = getValueForSortField(b, sortConfig.field);
@@ -107,8 +104,6 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         } else if (typeof valA === 'string' && typeof valB === 'string') {
           comparison = valA.localeCompare(valB);
         }
-        // Add more type checks if other sortable field types are introduced
-
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
       
@@ -123,7 +118,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoadingPatients(false);
     }
-  }, [sortConfig, searchTerm]); // sortConfig and searchTerm are now dependencies
+  }, [sortConfig, searchTerm]); 
 
   const fetchAppointments = useCallback(async () => {
     setIsLoadingAppointments(true);
@@ -137,15 +132,20 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
   
+  // Effect for initial seeding and fetching appointments (runs once)
   useEffect(() => {
-    const seedAndFetchData = async () => {
-        await patientService.seedInitialPatientsIfEmpty();
-        fetchPatients(); 
-        fetchAppointments();
+    const performInitialSetup = async () => {
+      await patientService.seedInitialPatientsIfEmpty();
+      fetchAppointments(); // Call the stable fetchAppointments callback
     };
-    seedAndFetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchPatients, fetchAppointments]); // fetchPatients will change if sortConfig or searchTerm changes
+    performInitialSetup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchAppointments]); // fetchAppointments is stable, this effect runs once on component mount
+
+  // Effect for fetching patients initially and whenever sortConfig or searchTerm changes
+  useEffect(() => {
+    fetchPatients();
+  }, [fetchPatients]); // fetchPatients is the callback that depends on sortConfig and searchTerm
 
 
   const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]}): Promise<Patient> => {

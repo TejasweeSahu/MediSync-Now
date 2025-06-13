@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,13 +30,15 @@ type PrescriptionFormValues = z.infer<typeof formSchema>;
 
 interface PrescriptionGeneratorProps {
   selectedPatient?: Patient | null;
+  onPatientRecordUpdated?: (patient: Patient) => void; // Callback to update DashboardPage's selectedPatient
 }
 
-export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient }) => {
-  const [isLoading, setIsLoading] = useState(false);
+export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient, onPatientRecordUpdated }) => {
+  const [isAISuggesting, setIsAISuggesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestPrescriptionOutput | null>(null);
   const { toast } = useToast();
-  const { addPrescriptionToPatient, patients: allPatients } = useAppState();
+  const { addPatient, addPrescriptionToPatient, patients: allPatientsFromContext, refreshPatients } = useAppState();
   const { doctor } = useAuth();
 
   const form = useForm<PrescriptionFormValues>({
@@ -56,17 +58,19 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         patientHistory: selectedPatient.history || '',
       });
       setSuggestion(null); 
-      setIsLoading(false); // Ensure loading state is reset
+      setIsAISuggesting(false); 
+      setIsSaving(false);
     } else {
       form.reset({ symptoms: '', diagnosis: '', patientHistory: '' });
       setSuggestion(null);
-      setIsLoading(false);
+      setIsAISuggesting(false);
+      setIsSaving(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient, form]);
+  }, [selectedPatient]); // form removed as a dependency to prevent reset on every keystroke
 
-  const onSubmit: SubmitHandler<PrescriptionFormValues> = async (data) => {
-    setIsLoading(true);
+  const handleGenerateSuggestion: SubmitHandler<PrescriptionFormValues> = async (data) => {
+    setIsAISuggesting(true);
     setSuggestion(null);
     try {
       const aiInput: SuggestPrescriptionInput = {
@@ -89,12 +93,12 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsAISuggesting(false);
     }
   };
   
-  const handleSavePrescription = () => {
-    if (!selectedPatient || !selectedPatient.id || !suggestion) {
+  const handleSavePrescription = async () => {
+    if (!selectedPatient || !suggestion) {
       toast({
         title: "Cannot Save",
         description: "No patient selected or no suggestion generated.",
@@ -103,23 +107,66 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       return;
     }
 
-    const prescriptionText = `${suggestion.prescriptionSuggestion}${suggestion.additionalNotes ? `\n\nAdditional Notes:\n${suggestion.additionalNotes}` : ''}`;
-    const isRealPatient = allPatients.some(p => p.id === selectedPatient.id);
+    setIsSaving(true);
+    let patientToUse = selectedPatient;
+    // Check if the patient is a temporary one (i.e., their ID isn't in the main Firestore-backed list)
+    // A simple heuristic for temporary ID might be checking if it's not a typical Firestore ID length/format,
+    // or if it's not found in allPatientsFromContext after ensuring allPatientsFromContext is fresh.
+    // For this prototype, we can check if the ID exists in the `allPatientsFromContext` list.
+    // This assumes `allPatientsFromContext` is reasonably up-to-date from Firestore.
+    const isActuallyInFirestore = allPatientsFromContext.some(p => p.id === selectedPatient.id);
 
-    if (isRealPatient) {
-      addPrescriptionToPatient(selectedPatient.id, prescriptionText);
+    try {
+      if (!isActuallyInFirestore && selectedPatient.id.startsWith('temp-appointment-')) { // More explicit check for temporary
+        // Patient is temporary, save them to Firestore first
+        const { id, ...patientDataToSave } = selectedPatient; // Exclude the temporary ID
+         if (!patientDataToSave.name || !patientDataToSave.diagnosis) {
+            toast({ title: "Missing Info", description: "Cannot save temporary patient without name and diagnosis.", variant: "destructive" });
+            setIsSaving(false);
+            return;
+        }
+        const newSavedPatient = await addPatient(patientDataToSave as Omit<Patient, 'id' | 'prescriptions'> & {prescriptions?: string[]});
+        patientToUse = newSavedPatient;
+        await refreshPatients(); // Refresh patient list in context
+        if (onPatientRecordUpdated) {
+            onPatientRecordUpdated(newSavedPatient); // Update DashboardPage's selectedPatient state
+        }
+        toast({
+          title: "Patient Record Created",
+          description: `${newSavedPatient.name}'s record has been saved to the system.`,
+          className: "bg-primary text-primary-foreground",
+        });
+      }
+
+      const prescriptionText = `${suggestion.prescriptionSuggestion}${suggestion.additionalNotes ? `\n\nAdditional Notes:\n${suggestion.additionalNotes}` : ''}`;
+      await addPrescriptionToPatient(patientToUse.id, prescriptionText);
+      
+      // After saving, refetch the specific patient to get the latest prescriptions for the accordion
+      if (onPatientRecordUpdated) {
+         // Simulate fetching the updated patient. In a real scenario, you might fetch this patient again.
+         const updatedPatientWithPrescription = {
+            ...patientToUse,
+            prescriptions: [...(patientToUse.prescriptions || []), prescriptionText]
+         };
+         onPatientRecordUpdated(updatedPatientWithPrescription);
+      }
+
+
       toast({
         title: "Prescription Saved",
-        description: `The prescription has been saved to ${selectedPatient.name}'s record.`,
+        description: `The prescription has been saved to ${patientToUse.name}'s record.`,
         className: "bg-primary text-primary-foreground",
       });
-    } else {
-      console.log("Prescription for temporary patient (simulated save):", selectedPatient.name, prescriptionText);
-      toast({
-        title: "Prescription Noted (Temporary Patient)",
-        description: `Prescription for ${selectedPatient.name} noted. This is a temporary record; add patient to system for permanent storage and history tracking.`,
-        variant: "default",
-      });
+
+    } catch (error) {
+        console.error("Error saving prescription or patient:", error);
+        toast({
+            title: "Save Error",
+            description: "Failed to save prescription or patient record. Please try again.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -135,7 +182,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         </CardDescription>
       </CardHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={form.handleSubmit(handleGenerateSuggestion)}>
           <CardContent className="space-y-4">
             {selectedPatient && (
               <>
@@ -182,7 +229,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <FormItem>
                   <FormLabel>Current Symptoms (for AI suggestion)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g., Persistent cough, fever, headache for 3 days..." {...field} rows={3} />
+                    <Textarea placeholder="e.g., Persistent cough, fever, headache for 3 days..." {...field} rows={3} disabled={isAISuggesting || isSaving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -195,7 +242,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <FormItem>
                   <FormLabel>Underlying/Confirmed Diagnosis</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Acute Bronchitis" {...field} />
+                    <Input placeholder="e.g., Acute Bronchitis" {...field} disabled={isAISuggesting || isSaving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -208,7 +255,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                 <FormItem>
                   <FormLabel>Relevant Patient History (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} />
+                    <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -216,13 +263,13 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
             />
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button type="submit" disabled={isLoading || !selectedPatient}>
-              {isLoading ? ( 
+            <Button type="submit" disabled={isAISuggesting || !selectedPatient || isSaving}>
+              {isAISuggesting ? ( 
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              {isLoading ? 'Generating...' : 'Suggest New / Refine'}
+              {isAISuggesting ? 'Generating...' : 'Suggest New / Refine'}
             </Button>
           </CardFooter>
         </form>
@@ -242,14 +289,14 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                   <p className="text-foreground whitespace-pre-wrap">{suggestion.additionalNotes}</p>
                 </div>
               )}
-              <Button onClick={handleSavePrescription} className="mt-4" disabled={!selectedPatient || !suggestion}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Suggestion to Record
+              <Button onClick={handleSavePrescription} className="mt-4" disabled={!selectedPatient || !suggestion || isSaving || isAISuggesting}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {isSaving? 'Saving...' : 'Save Suggestion to Record'}
               </Button>
             </div>
         </CardContent>
       )}
-       {!selectedPatient && !isLoading && (
+       {!selectedPatient && !isAISuggesting && (
         <CardContent className="mt-4 border-t pt-4">
             <p className="text-center text-muted-foreground">Please select a patient from the list to enable prescription generation.</p>
         </CardContent>
@@ -257,4 +304,3 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
-

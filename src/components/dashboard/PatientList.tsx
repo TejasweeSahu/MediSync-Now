@@ -10,16 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Edit3, Pencil } from 'lucide-react';
+import { Users, Pencil, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
 }
 
 export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => {
-  const { patients } = useAppState();
+  const { patients, isLoadingPatients } = useAppState();
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -33,6 +34,28 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     setEditingPatient(null);
   };
 
+  if (isLoadingPatients) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Users /> Patient Records</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-4 p-2">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-[150px]" />
+                <Skeleton className="h-3 w-[100px]" />
+              </div>
+            </div>
+          ))}
+          <p className="text-muted-foreground text-center py-2">Loading patient records...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!patients.length) {
     return (
       <Card>
@@ -40,7 +63,7 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
           <CardTitle className="flex items-center gap-2"><Users /> Patient Records</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No patient records available at the moment.</p>
+          <p className="text-muted-foreground">No patient records available. Add patients through the front desk or relevant system.</p>
         </CardContent>
       </Card>
     );
@@ -74,7 +97,6 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
                     key={patient.id} 
                     className={onSelectPatient ? "cursor-pointer hover:bg-muted/50" : "" } 
                     onClick={onSelectPatient ? (e) => {
-                      // Prevent dialog trigger if clicking on the edit button itself
                       if ((e.target as HTMLElement).closest('button[data-edit-button]')) return;
                       onSelectPatient(patient);
                     } : undefined}

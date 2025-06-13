@@ -1,23 +1,31 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
 import type { Appointment } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, User, Clock } from 'lucide-react';
+import { CalendarDays, User, Clock, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface UpcomingAppointmentsProps {
   onAppointmentSelect: (appointment: Appointment) => void;
 }
 
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
-  const { getAppointmentsForDoctor } = useAppState();
+  const { getAppointmentsForDoctor, isLoadingAppointments, appointments, refreshAppointments } = useAppState();
   const { doctor } = useAuth();
+
+  useEffect(() => {
+    if (doctor) {
+        refreshAppointments(); // Fetch appointments when doctor info is available or changes
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doctor]); // Removed refreshAppointments from dependency array to avoid loop if it's not stable
 
   if (!doctor) {
     return (
@@ -31,10 +39,30 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
       </Card>
     );
   }
+  
+  if (isLoadingAppointments) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <CalendarDays className="text-primary" /> My Appointments
+          </CardTitle>
+           <Skeleton className="h-4 w-3/4" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+            {[...Array(2)].map((_, i) => (
+                 <Skeleton key={i} className="h-24 w-full rounded-lg" />
+            ))}
+          <p className="text-muted-foreground text-center py-2">Loading appointments...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const doctorAppointments = getAppointmentsForDoctor(doctor.id);
 
-  const appointments = getAppointmentsForDoctor(doctor.id);
 
-  if (!appointments.length) {
+  if (!doctorAppointments.length) {
     return (
       <Card className="shadow-lg">
         <CardHeader>
@@ -61,7 +89,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
       <CardContent>
         <ScrollArea className="h-[300px] pr-4">
           <div className="space-y-4">
-            {appointments.map((appointment) => (
+            {doctorAppointments.map((appointment) => (
               <Card 
                 key={appointment.id} 
                 className="bg-background hover:shadow-md transition-shadow cursor-pointer"
@@ -91,7 +119,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={14} /> 
-                    {format(parseISO(appointment.appointmentDate), "PPpp")}
+                    {appointment.appointmentDate ? format(parseISO(appointment.appointmentDate), "PPpp") : 'Date N/A'}
                   </div>
                 </CardContent>
               </Card>

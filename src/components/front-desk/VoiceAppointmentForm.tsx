@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Mic, MicOff, User, Activity, BriefcaseMedical, CalendarIcon as LucideCalendarIcon, Sparkles, Trash2 } from 'lucide-react';
 import { useAppState } from '@/hooks/useAppState';
 import { mockDoctors } from '@/data/mockData';
-import type { Doctor } from '@/types';
+import type { Doctor, Appointment } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,7 @@ const defaultFormValues: Partial<AppointmentFormValues> = {
 };
 
 export const VoiceAppointmentForm: React.FC = () => {
-  const { addAppointment } = useAppState();
+  const { addAppointment: addAppointmentToContext, refreshAppointments } = useAppState(); // Renamed to avoid conflict
   const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [isParsingTranscript, setIsParsingTranscript] = useState(false);
@@ -162,7 +162,7 @@ export const VoiceAppointmentForm: React.FC = () => {
       setIsParsingTranscript(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, toast]);
+  }, [form, toast]); // Removed `capitalizeFirstLetter` and `capitalizeName` as they are defined locally
 
   const toggleListening = useCallback(() => {
     if (!speechApiAvailable) {
@@ -237,7 +237,7 @@ export const VoiceAppointmentForm: React.FC = () => {
   }
   
 
-  const onSubmit: SubmitHandler<AppointmentFormValues> = (data) => {
+  const onSubmit: SubmitHandler<AppointmentFormValues> = async (data) => {
     const selectedDoctor = mockDoctors.find(doc => doc.id === data.doctorId);
     if (!selectedDoctor) {
       toast({ title: "Error", description: "Selected doctor not found.", variant: "destructive"});
@@ -248,18 +248,25 @@ export const VoiceAppointmentForm: React.FC = () => {
       return;
     }
     
-    const appointmentData = {
-      ...data,
-      patientName: data.patientName, 
-      symptoms: data.symptoms, 
+    const appointmentDataToSave: Omit<Appointment, 'id' | 'status'> = {
+      patientName: data.patientName!, // Patient name is required by this point
       patientAge: data.patientAge, 
+      symptoms: data.symptoms!, // Symptoms are required
+      doctorId: data.doctorId,
       doctorName: selectedDoctor.name,
       appointmentDate: data.appointmentDate.toISOString(),
     };
-    addAppointment(appointmentData);
-    toast({ title: "Appointment Booked!", description: `Appointment for ${data.patientName} with ${selectedDoctor.name} has been scheduled.`});
-    form.reset(defaultFormValues); 
-    setTranscript('');
+
+    try {
+      await addAppointmentToContext(appointmentDataToSave);
+      await refreshAppointments(); // Refresh appointments list in dashboard
+      toast({ title: "Appointment Booked!", description: `Appointment for ${data.patientName} with ${selectedDoctor.name} has been scheduled.`});
+      form.reset(defaultFormValues); 
+      setTranscript('');
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+      toast({ title: "Booking Error", description: "Failed to book appointment. Please try again.", variant: "destructive"});
+    }
   };
 
   const handleClearForm = () => {
@@ -282,7 +289,7 @@ export const VoiceAppointmentForm: React.FC = () => {
             Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.
           </CardDescription>
         </div>
-        <TooltipProvider>
+         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -290,16 +297,16 @@ export const VoiceAppointmentForm: React.FC = () => {
                 onClick={toggleListening}
                 variant={isListening ? "destructive" : "default"}
                 size="icon"
-                className="rounded-full w-14 h-14 flex-shrink-0" 
+                className="rounded-full w-14 h-14 flex-shrink-0 relative"
                 disabled={!speechApiAvailable || isParsingTranscript}
                 aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
               >
-                {isListening ? (
+                {isParsingTranscript ? (
+                  <>
+                    <Mic className="h-7 w-7 animate-pulse text-primary-foreground drop-shadow-[0_0_5px_hsl(var(--primary-foreground)/0.8)]" />
+                  </>
+                ) : isListening ? (
                   <MicOff className="h-6 w-6" />
-                ) : isParsingTranscript ? (
-                  <Mic
-                    className="h-7 w-7 animate-pulse text-primary-foreground drop-shadow-[0_0_5px_hsl(var(--primary-foreground)/0.8)]"
-                  />
                 ) : (
                   <Mic className="h-6 w-6" />
                 )}
@@ -474,8 +481,7 @@ export const VoiceAppointmentForm: React.FC = () => {
               className="w-full sm:w-auto" 
               disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
             >
-              {isParsingTranscript && <Sparkles className="mr-2 h-4 w-4 animate-ping absolute" />}
-              {(form.formState.isSubmitting || isParsingTranscript ) && <Sparkles className="mr-2 h-4 w-4 animate-spin" />}
+              {(form.formState.isSubmitting || (isParsingTranscript && !isListening) ) && <Sparkles className="mr-2 h-4 w-4 animate-spin" />}
               Book Appointment
             </Button>
           </CardFooter>
@@ -484,5 +490,3 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
-    
-

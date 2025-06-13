@@ -37,6 +37,8 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     setIsExpanded(!isExpanded);
   };
 
+  const doctorAppointments = doctor ? getAppointmentsForDoctor(doctor.id) : [];
+
   if (!doctor && !isLoadingAppointments) { 
     return (
       <Card className="shadow-lg">
@@ -62,7 +64,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
            <Skeleton className="h-4 w-3/4" />
         </CardHeader>
         <CardContent className="space-y-3">
-            {[...Array(2)].map((_, i) => ( // Show 2 skeletons for consistency
+            {[...Array(2)].map((_, i) => ( 
                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
             ))}
           <p className="text-muted-foreground text-center py-2">Loading appointments...</p>
@@ -71,9 +73,6 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     );
   }
   
-  const doctorAppointments = doctor ? getAppointmentsForDoctor(doctor.id) : [];
-
-
   if (!doctorAppointments.length) {
     return (
       <Card className="shadow-lg">
@@ -90,13 +89,12 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     );
   }
 
-  const displayedAppointments = isExpanded ? doctorAppointments : doctorAppointments.slice(0, INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON);
-
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl font-headline">
           <CalendarDays className="text-primary" /> My Appointments
+          {doctorAppointments.length > 0 && <span className="text-xl font-medium text-muted-foreground">({doctorAppointments.length})</span>}
         </CardTitle>
         <CardDescription>Your scheduled appointments. Click an appointment to view patient details for prescription.</CardDescription>
       </CardHeader>
@@ -106,7 +104,6 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
           style={{ height: isExpanded ? EXPANDED_SCROLL_HEIGHT : INITIAL_SCROLL_HEIGHT }}
         >
           <div className="space-y-4">
-            {/* Always render based on slice for initial view, scroll area handles actual visibility */}
             {doctorAppointments.map((appointment) => (
               <Card 
                 key={appointment.id} 

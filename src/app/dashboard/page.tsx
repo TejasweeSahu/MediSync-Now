@@ -28,11 +28,19 @@ export default function DashboardPage() {
   };
 
   const handleAppointmentClick = (patientName: string) => {
-    const patientToSelect = patients.find(p => p.name === patientName);
+    if (!patientName || typeof patientName !== 'string') {
+        console.warn('Invalid patientName received for appointment click.');
+        handleSelectPatientAndScroll(null);
+        return;
+    }
+    const patientToSelect = patients.find(
+        (p) => p.name.trim().toLowerCase() === patientName.trim().toLowerCase()
+    );
+
     if (patientToSelect) {
       handleSelectPatientAndScroll(patientToSelect);
     } else {
-      // Handle case where patient might not be found, though unlikely with mock data
+      // Handle case where patient might not be found
       console.warn(`Patient with name "${patientName}" not found for appointment click.`);
       handleSelectPatientAndScroll(null); // Deselect if patient not found
     }

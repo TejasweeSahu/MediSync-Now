@@ -4,18 +4,21 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LogOut, UserCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Logo } from '@/components/shared/Logo';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export const Header: React.FC = () => {
-  const { doctor, logout } = useAuth();
+  const { doctor, logout, isAuthenticated } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
+
+  const showDoctorInfo = isAuthenticated && doctor && pathname !== '/front-desk';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -25,7 +28,7 @@ export const Header: React.FC = () => {
           <Logo iconSize={24} textSize="text-xl hidden sm:flex" />
         </div>
         
-        {doctor && (
+        {showDoctorInfo && (
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
               <UserCircle size={20} className="text-muted-foreground" />

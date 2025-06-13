@@ -1,6 +1,6 @@
 
 'use client';
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Header } from './Header';
 import { Logo } from '@/components/shared/Logo';
@@ -34,17 +33,16 @@ const navItems: NavItem[] = [
 ];
 
 export const AppShell = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated, logout } = useAuth(); // isLoading and doctor removed if not directly used here for redirection
+  const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  // Removed the useEffect hook that was here for global auth check and redirect.
-  // Auth enforcement is now per-page for pages that need it (e.g., Dashboard).
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
+
+  const showSidebarLogout = isAuthenticated && pathname !== '/front-desk';
 
   return (
     <SidebarProvider defaultOpen>
@@ -70,7 +68,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4">
-          {isAuthenticated && ( // Conditionally render logout button
+          {showSidebarLogout && ( 
             <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
               <LogOut />
               <span>Logout</span>

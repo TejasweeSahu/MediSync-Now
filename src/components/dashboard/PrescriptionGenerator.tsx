@@ -10,11 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, FileText, Pill, Save } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Pill, Save, History } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
@@ -170,18 +171,42 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {selectedPatient && (
-              <Alert>
-                <Pill className="h-4 w-4" />
-                <AlertTitle className="font-medium">Patient: {selectedPatient.name}</AlertTitle>
-                <AlertDescription>
-                  Age: {selectedPatient.age}, Initial/Main Diagnosis: {selectedPatient.diagnosis}
-                  {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
-                    <span className="block mt-1 text-xs text-muted-foreground">
-                      ({selectedPatient.prescriptions.length} prior prescription(s) on record)
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
+              <>
+                <Alert>
+                  <Pill className="h-4 w-4" />
+                  <AlertTitle className="font-medium">Patient: {selectedPatient.name}</AlertTitle>
+                  <AlertDescription>
+                    Age: {selectedPatient.age}, Initial/Main Diagnosis: {selectedPatient.diagnosis}
+                    {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
+                      <span className="block mt-1 text-xs text-muted-foreground">
+                        ({selectedPatient.prescriptions.length} prior prescription(s) on record)
+                      </span>
+                    )}
+                  </AlertDescription>
+                </Alert>
+
+                {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger>
+                        <div className="flex items-center gap-2 text-sm">
+                            <History className="h-4 w-4 text-muted-foreground" />
+                            View Prior Prescriptions ({selectedPatient.prescriptions.length})
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 max-h-48 overflow-y-auto p-1 pr-3">
+                          {selectedPatient.prescriptions.map((prescription, index) => (
+                            <div key={index} className="text-xs p-3 border rounded-md bg-background whitespace-pre-wrap">
+                              {prescription}
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+              </>
             )}
             <FormField
               control={form.control}

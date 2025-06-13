@@ -4,15 +4,19 @@
 import React from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
-import type { Appointment } from '@/types';
+import type { Appointment, Patient } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CalendarDays, User, Clock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
-export const UpcomingAppointments: React.FC = () => {
-  const { getAppointmentsForDoctor, updateAppointmentStatus } = useAppState();
+interface UpcomingAppointmentsProps {
+  onAppointmentSelect: (patientName: string) => void;
+}
+
+export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
+  const { getAppointmentsForDoctor } = useAppState(); // Removed updateAppointmentStatus as it's not used here
   const { doctor } = useAuth();
 
   if (!doctor) {
@@ -52,13 +56,21 @@ export const UpcomingAppointments: React.FC = () => {
         <CardTitle className="flex items-center gap-2 text-2xl font-headline">
           <CalendarDays className="text-primary" /> My Appointments
         </CardTitle>
-        <CardDescription>Your scheduled appointments.</CardDescription>
+        <CardDescription>Your scheduled appointments. Click an appointment to view patient details for prescription.</CardDescription>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[300px] pr-4">
           <div className="space-y-4">
             {appointments.map((appointment) => (
-              <Card key={appointment.id} className="bg-background hover:shadow-md transition-shadow">
+              <Card 
+                key={appointment.id} 
+                className="bg-background hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => onAppointmentSelect(appointment.patientName)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment.patientName);}}
+                aria-label={`Select appointment for ${appointment.patientName}`}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg font-medium">{appointment.patientName}</CardTitle>
@@ -82,7 +94,6 @@ export const UpcomingAppointments: React.FC = () => {
                     {format(parseISO(appointment.appointmentDate), "PPpp")}
                   </div>
                 </CardContent>
-                {/* Add actions like 'Mark as Complete' if needed */}
               </Card>
             ))}
           </div>

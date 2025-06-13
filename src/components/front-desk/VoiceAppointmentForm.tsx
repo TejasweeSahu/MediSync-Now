@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Mic, MicOff, User, Activity, BriefcaseMedical, CalendarIcon as LucideCalendarIcon, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Mic, MicOff, User, Activity, BriefcaseMedical, CalendarIcon as LucideCalendarIcon, Sparkles, Trash2 } from 'lucide-react';
 import { useAppState } from '@/hooks/useAppState';
 import { mockDoctors } from '@/data/mockData';
 import type { Doctor } from '@/types';
@@ -297,7 +297,9 @@ export const VoiceAppointmentForm: React.FC = () => {
                 {isListening ? (
                   <MicOff className="h-6 w-6" />
                 ) : isParsingTranscript ? (
-                  <Mic className="h-7 w-7 animate-pulse text-primary-foreground" />
+                  <Mic
+                    className="h-7 w-7 animate-pulse text-primary-foreground drop-shadow-[0_0_5px_hsl(var(--primary-foreground)/0.8)]"
+                  />
                 ) : (
                   <Mic className="h-6 w-6" />
                 )}
@@ -472,7 +474,8 @@ export const VoiceAppointmentForm: React.FC = () => {
               className="w-full sm:w-auto" 
               disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
             >
-              {(form.formState.isSubmitting || isParsingTranscript) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isParsingTranscript && <Sparkles className="mr-2 h-4 w-4 animate-ping absolute" />}
+              {(form.formState.isSubmitting || isParsingTranscript ) && <Sparkles className="mr-2 h-4 w-4 animate-spin" />}
               Book Appointment
             </Button>
           </CardFooter>

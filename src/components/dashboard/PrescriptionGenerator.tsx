@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, FileText, Pill, Save, History } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Pill, Save, History, AlertTriangle, Info } from 'lucide-react';
 import { suggestPrescription } from '@/ai/flows/suggest-prescription';
 import type { SuggestPrescriptionInput, SuggestPrescriptionOutput } from '@/ai/flows/suggest-prescription';
 import type { Patient } from '@/types';
@@ -19,6 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAppState } from '@/hooks/useAppState';
 import { useAuth } from '@/hooks/useAuth';
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
   symptoms: z.string().min(10, { message: "Symptoms must be at least 10 characters." }),
@@ -30,7 +31,7 @@ type PrescriptionFormValues = z.infer<typeof formSchema>;
 
 interface PrescriptionGeneratorProps {
   selectedPatient?: Patient | null;
-  onPatientRecordUpdated?: (patient: Patient) => void; // Callback to update DashboardPage's selectedPatient
+  onPatientRecordUpdated?: (patient: Patient) => void;
 }
 
 export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ selectedPatient, onPatientRecordUpdated }) => {
@@ -67,7 +68,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       setIsSaving(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient]); // form removed as a dependency to prevent reset on every keystroke
+  }, [selectedPatient]);
 
   const handleGenerateSuggestion: SubmitHandler<PrescriptionFormValues> = async (data) => {
     setIsAISuggesting(true);
@@ -83,13 +84,13 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       setSuggestion(result);
       toast({
         title: "Prescription Suggested",
-        description: "AI has generated a prescription suggestion based on your input.",
+        description: "AI has generated a structured prescription suggestion.",
       });
     } catch (error) {
       console.error('Error generating prescription:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate prescription suggestion. Please try again.",
+        title: "AI Suggestion Error",
+        description: (error as Error)?.message || "Failed to generate prescription suggestion. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -97,6 +98,38 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     }
   };
   
+  const formatPrescriptionForSaving = (suggestionData: SuggestPrescriptionOutput): string => {
+    let formattedString = "Prescription:\n";
+
+    if (suggestionData.medications && suggestionData.medications.length > 0) {
+      formattedString += "\nMedications:\n";
+      suggestionData.medications.forEach(med => {
+        formattedString += `- ${med.name} ${med.dosage}`;
+        if (med.route) formattedString += ` (${med.route})`;
+        formattedString += `, ${med.frequency}`;
+        if (med.duration) formattedString += ` ${med.duration}`;
+        if (med.additionalInstructions) formattedString += `\n  Instructions: ${med.additionalInstructions}`;
+        formattedString += "\n";
+      });
+    } else {
+      formattedString += "No specific medications suggested at this time.\n";
+    }
+
+    if (suggestionData.generalInstructions) {
+      formattedString += `\nGeneral Instructions:\n${suggestionData.generalInstructions}\n`;
+    }
+
+    if (suggestionData.followUp) {
+      formattedString += `\nFollow Up:\n${suggestionData.followUp}\n`;
+    }
+
+    if (suggestionData.additionalNotes) {
+      formattedString += `\nAdditional Notes for Doctor:\n${suggestionData.additionalNotes}\n`;
+    }
+    
+    return formattedString.trim();
+  };
+
   const handleSavePrescription = async () => {
     if (!selectedPatient || !suggestion) {
       toast({
@@ -109,17 +142,11 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
     setIsSaving(true);
     let patientToUse = selectedPatient;
-    // Check if the patient is a temporary one (i.e., their ID isn't in the main Firestore-backed list)
-    // A simple heuristic for temporary ID might be checking if it's not a typical Firestore ID length/format,
-    // or if it's not found in allPatientsFromContext after ensuring allPatientsFromContext is fresh.
-    // For this prototype, we can check if the ID exists in the `allPatientsFromContext` list.
-    // This assumes `allPatientsFromContext` is reasonably up-to-date from Firestore.
     const isActuallyInFirestore = allPatientsFromContext.some(p => p.id === selectedPatient.id);
 
     try {
-      if (!isActuallyInFirestore && selectedPatient.id.startsWith('temp-appointment-')) { // More explicit check for temporary
-        // Patient is temporary, save them to Firestore first
-        const { id, ...patientDataToSave } = selectedPatient; // Exclude the temporary ID
+      if (!isActuallyInFirestore && selectedPatient.id.startsWith('temp-appointment-')) {
+        const { id, ...patientDataToSave } = selectedPatient; 
          if (!patientDataToSave.name || !patientDataToSave.diagnosis) {
             toast({ title: "Missing Info", description: "Cannot save temporary patient without name and diagnosis.", variant: "destructive" });
             setIsSaving(false);
@@ -127,9 +154,9 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         }
         const newSavedPatient = await addPatient(patientDataToSave as Omit<Patient, 'id' | 'prescriptions'> & {prescriptions?: string[]});
         patientToUse = newSavedPatient;
-        await refreshPatients(); // Refresh patient list in context
+        await refreshPatients(); 
         if (onPatientRecordUpdated) {
-            onPatientRecordUpdated(newSavedPatient); // Update DashboardPage's selectedPatient state
+            onPatientRecordUpdated(newSavedPatient); 
         }
         toast({
           title: "Patient Record Created",
@@ -138,19 +165,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         });
       }
 
-      const prescriptionText = `${suggestion.prescriptionSuggestion}${suggestion.additionalNotes ? `\n\nAdditional Notes:\n${suggestion.additionalNotes}` : ''}`;
+      const prescriptionText = formatPrescriptionForSaving(suggestion);
       await addPrescriptionToPatient(patientToUse.id, prescriptionText);
       
-      // After saving, refetch the specific patient to get the latest prescriptions for the accordion
       if (onPatientRecordUpdated) {
-         // Simulate fetching the updated patient. In a real scenario, you might fetch this patient again.
          const updatedPatientWithPrescription = {
             ...patientToUse,
             prescriptions: [...(patientToUse.prescriptions || []), prescriptionText]
          };
          onPatientRecordUpdated(updatedPatientWithPrescription);
       }
-
 
       toast({
         title: "Prescription Saved",
@@ -178,7 +202,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         </CardTitle>
         <CardDescription>
           {selectedPatient ? `Review or generate a new prescription suggestion for ${selectedPatient.name}.` : "Select a patient to get started."}
-          {" For new suggestions, please ensure current symptoms are accurately entered below."}
+          {" For new suggestions, please ensure current symptoms and diagnosis are accurately entered below."}
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -277,22 +301,61 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
       {suggestion && (
         <CardContent className="mt-6 border-t pt-6">
-          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2"><FileText className="text-accent" /> Current AI Suggestion</h3>
-            <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-              <div>
-                <strong className="block text-sm font-medium text-foreground">Suggestion:</strong>
-                <p className="text-foreground whitespace-pre-wrap">{suggestion.prescriptionSuggestion}</p>
-              </div>
-              {suggestion.additionalNotes && (
+          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><FileText className="text-accent" /> Current AI Suggestion</h3>
+            <div className="space-y-6 p-4 bg-muted/50 rounded-lg">
+              
+              {suggestion.medications && suggestion.medications.length > 0 ? (
                 <div>
-                  <strong className="block text-sm font-medium text-foreground">Additional Notes:</strong>
-                  <p className="text-foreground whitespace-pre-wrap">{suggestion.additionalNotes}</p>
+                  <strong className="block text-md font-medium text-foreground mb-2">Medications:</strong>
+                  <ul className="space-y-3 list-inside">
+                    {suggestion.medications.map((med, index) => (
+                      <li key={index} className="p-3 border rounded-md bg-background shadow-sm">
+                        <p className="font-semibold text-primary">{med.name} {med.dosage} {med.route && <Badge variant="outline" className="ml-1">{med.route}</Badge>}</p>
+                        <p className="text-sm text-muted-foreground">Frequency: {med.frequency}</p>
+                        {med.duration && <p className="text-sm text-muted-foreground">Duration: {med.duration}</p>}
+                        {med.additionalInstructions && <p className="text-sm text-muted-foreground mt-1"><Info size={12} className="inline mr-1"/> {med.additionalInstructions}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <Alert variant="default">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>No Medications Suggested</AlertTitle>
+                  <AlertDescription>
+                    The AI did not suggest specific medications based on the input. This might be appropriate, or further details may be needed. Check "Additional Notes" for more context.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {suggestion.generalInstructions && (
+                <div>
+                  <strong className="block text-md font-medium text-foreground mb-1">General Instructions:</strong>
+                  <p className="text-foreground whitespace-pre-wrap text-sm p-3 border rounded-md bg-background shadow-sm">{suggestion.generalInstructions}</p>
                 </div>
               )}
-              <Button onClick={handleSavePrescription} className="mt-4" disabled={!selectedPatient || !suggestion || isSaving || isAISuggesting}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {isSaving? 'Saving...' : 'Save Suggestion to Record'}
-              </Button>
+              
+              {suggestion.followUp && (
+                <div>
+                  <strong className="block text-md font-medium text-foreground mb-1">Follow Up:</strong>
+                  <p className="text-foreground whitespace-pre-wrap text-sm p-3 border rounded-md bg-background shadow-sm">{suggestion.followUp}</p>
+                </div>
+              )}
+
+              {suggestion.additionalNotes && (
+                <Alert variant={suggestion.medications && suggestion.medications.length > 0 ? "default" : "destructive"}>
+                  {suggestion.medications && suggestion.medications.length > 0 ? <Info className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  <AlertTitle>Additional Notes for Doctor</AlertTitle>
+                  <AlertDescription className="whitespace-pre-wrap">{suggestion.additionalNotes}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="flex justify-end mt-4">
+                <Button onClick={handleSavePrescription} disabled={!selectedPatient || !suggestion || isSaving || isAISuggesting}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {isSaving? 'Saving...' : 'Save Suggestion to Record'}
+                </Button>
+              </div>
             </div>
         </CardContent>
       )}
@@ -304,3 +367,4 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
+

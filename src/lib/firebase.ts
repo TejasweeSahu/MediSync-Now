@@ -6,13 +6,12 @@ import { getFirestore } from 'firebase/firestore';
 // TODO: Replace with your actual Firebase project configuration
 // You can find this in your Firebase project settings.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your actual API key
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Replace with your actual auth domain
-  projectId: "YOUR_PROJECT_ID", // Replace with your actual project ID
-  storageBucket: "YOUR_PROJECT_ID.appspot.com", // Replace with your actual storage bucket
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your actual messaging sender ID
-  appId: "YOUR_APP_ID", // Replace with your actual app ID
-  // measurementId: "YOUR_MEASUREMENT_ID" // Optional: if you use Google Analytics
+  apiKey: "AIzaSyClSwmAN98FBNcbynCB_VAAGzsQk23moAM",
+  authDomain: "medisync-now.firebaseapp.com",
+  projectId: "medisync-now",
+  storageBucket: "medisync-now.firebasestorage.app",
+  messagingSenderId: "1001251139142",
+  appId: "1:1001251139142:web:ed21c0f7f28b32e0212447"
 };
 
 // Initialize Firebase

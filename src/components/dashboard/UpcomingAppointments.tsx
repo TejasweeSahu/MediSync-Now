@@ -17,8 +17,8 @@ interface UpcomingAppointmentsProps {
   onAppointmentSelect: (appointment: Appointment) => void;
 }
 
-const INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON = 3; // Approx items fitting in 300px
-const INITIAL_SCROLL_HEIGHT = "300px";
+const INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON = 2; 
+const INITIAL_SCROLL_HEIGHT = "280px"; // Adjusted to better fit ~2 items
 const EXPANDED_SCROLL_HEIGHT = "500px";
 
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
@@ -37,7 +37,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     setIsExpanded(!isExpanded);
   };
 
-  if (!doctor && !isLoadingAppointments) { // Also check isLoadingAppointments to avoid flash of this message
+  if (!doctor && !isLoadingAppointments) { 
     return (
       <Card className="shadow-lg">
         <CardHeader>
@@ -62,7 +62,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
            <Skeleton className="h-4 w-3/4" />
         </CardHeader>
         <CardContent className="space-y-3">
-            {[...Array(2)].map((_, i) => (
+            {[...Array(2)].map((_, i) => ( // Show 2 skeletons for consistency
                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
             ))}
           <p className="text-muted-foreground text-center py-2">Loading appointments...</p>
@@ -90,6 +90,8 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     );
   }
 
+  const displayedAppointments = isExpanded ? doctorAppointments : doctorAppointments.slice(0, INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON);
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -104,6 +106,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
           style={{ height: isExpanded ? EXPANDED_SCROLL_HEIGHT : INITIAL_SCROLL_HEIGHT }}
         >
           <div className="space-y-4">
+            {/* Always render based on slice for initial view, scroll area handles actual visibility */}
             {doctorAppointments.map((appointment) => (
               <Card 
                 key={appointment.id} 
@@ -157,3 +160,4 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     </Card>
   );
 };
+

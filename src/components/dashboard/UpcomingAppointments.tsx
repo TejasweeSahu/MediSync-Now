@@ -17,8 +17,7 @@ interface UpcomingAppointmentsProps {
   onAppointmentSelect: (appointment: Appointment) => void;
 }
 
-const INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON = 2; 
-const INITIAL_SCROLL_HEIGHT = "280px"; // Adjusted to better fit ~2 items
+const INITIAL_APPOINTMENTS_TO_DISPLAY = 2; 
 const EXPANDED_SCROLL_HEIGHT = "500px";
 
 export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAppointmentSelect }) => {
@@ -38,6 +37,10 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
   };
 
   const doctorAppointments = doctor ? getAppointmentsForDoctor(doctor.id) : [];
+
+  const appointmentsToRender = isExpanded
+    ? doctorAppointments
+    : doctorAppointments.slice(0, INITIAL_APPOINTMENTS_TO_DISPLAY);
 
   if (!doctor && !isLoadingAppointments) { 
     return (
@@ -64,7 +67,7 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
            <Skeleton className="h-4 w-3/4" />
         </CardHeader>
         <CardContent className="space-y-3">
-            {[...Array(2)].map((_, i) => ( 
+            {[...Array(INITIAL_APPOINTMENTS_TO_DISPLAY)].map((_, i) => ( 
                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
             ))}
           <p className="text-muted-foreground text-center py-2">Loading appointments...</p>
@@ -89,6 +92,44 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     );
   }
 
+  const renderAppointmentCards = (appointmentsList: Appointment[]) => (
+    appointmentsList.map((appointment) => (
+      <Card 
+        key={appointment.id} 
+        className="bg-background hover:shadow-md transition-shadow cursor-pointer"
+        onClick={() => onAppointmentSelect(appointment)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment);}}
+        aria-label={`Select appointment for ${appointment.patientName}`}
+      >
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-lg font-medium">{appointment.patientName}</CardTitle>
+            <Badge 
+              variant={appointment.status === 'Scheduled' ? 'default' : appointment.status === 'Completed' ? 'secondary': 'destructive'}
+              className="capitalize"
+            >
+              {appointment.status}
+            </Badge>
+          </div>
+          <CardDescription className="text-xs">
+            Symptoms: {appointment.symptoms}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1">
+          <div className="flex items-center gap-2">
+            <User size={14} /> Age: {appointment.patientAge !== undefined ? appointment.patientAge : 'N/A'}
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock size={14} /> 
+            {appointment.appointmentDate ? format(parseISO(appointment.appointmentDate), "PPpp") : 'Date N/A'}
+          </div>
+        </CardContent>
+      </Card>
+    ))
+  );
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -99,49 +140,22 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
         <CardDescription>Your scheduled appointments. Click an appointment to view patient details for prescription.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea 
-          className="pr-4 transition-all duration-300 ease-in-out" 
-          style={{ height: isExpanded ? EXPANDED_SCROLL_HEIGHT : INITIAL_SCROLL_HEIGHT }}
-        >
+        {isExpanded && doctorAppointments.length > INITIAL_APPOINTMENTS_TO_DISPLAY ? (
+          <ScrollArea 
+            className="pr-4 transition-all duration-300 ease-in-out" 
+            style={{ height: EXPANDED_SCROLL_HEIGHT }}
+          >
+            <div className="space-y-4">
+              {renderAppointmentCards(appointmentsToRender)}
+            </div>
+          </ScrollArea>
+        ) : (
           <div className="space-y-4">
-            {doctorAppointments.map((appointment) => (
-              <Card 
-                key={appointment.id} 
-                className="bg-background hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => onAppointmentSelect(appointment)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAppointmentSelect(appointment);}}
-                aria-label={`Select appointment for ${appointment.patientName}`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg font-medium">{appointment.patientName}</CardTitle>
-                    <Badge 
-                      variant={appointment.status === 'Scheduled' ? 'default' : appointment.status === 'Completed' ? 'secondary': 'destructive'}
-                      className="capitalize"
-                    >
-                      {appointment.status}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-xs">
-                    Symptoms: {appointment.symptoms}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground space-y-1">
-                  <div className="flex items-center gap-2">
-                    <User size={14} /> Age: {appointment.patientAge !== undefined ? appointment.patientAge : 'N/A'}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} /> 
-                    {appointment.appointmentDate ? format(parseISO(appointment.appointmentDate), "PPpp") : 'Date N/A'}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {renderAppointmentCards(appointmentsToRender)}
           </div>
-        </ScrollArea>
-        {doctorAppointments.length > INITIAL_APPOINTMENTS_THRESHOLD_FOR_BUTTON && (
+        )}
+        
+        {doctorAppointments.length > INITIAL_APPOINTMENTS_TO_DISPLAY && (
             <div className="mt-4 text-center">
               <Button
                 variant="ghost"
@@ -157,4 +171,3 @@ export const UpcomingAppointments: React.FC<UpcomingAppointmentsProps> = ({ onAp
     </Card>
   );
 };
-

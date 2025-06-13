@@ -54,14 +54,15 @@ export const VoiceAppointmentForm: React.FC = () => {
     defaultValues: {
       patientName: '',
       symptoms: '',
+      // Let doctorId and appointmentDate be undefined initially
     },
   });
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
       setSpeechApiAvailable(true);
-      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current = new SpeechRecognitionAPI();
       const recognition = recognitionRef.current;
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -76,12 +77,15 @@ export const VoiceAppointmentForm: React.FC = () => {
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
-        toast({ title: "Speech Recognition Error", description: event.error, variant: "destructive"});
+        toast({ title: "Speech Recognition Error", description: event.error || "Unknown error", variant: "destructive"});
         setIsListening(false);
       };
       
       recognition.onend = () => {
-        if(isListening) setIsListening(false); // Ensure listening state is false if recognition ends unexpectedly
+        // isListening state is managed by onresult and onerror
+        if (recognitionRef.current && isListening) {
+            setIsListening(false); // Ensure listening state is false if recognition ends unexpectedly
+        }
       };
 
     } else {
@@ -94,32 +98,110 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // isListening removed from deps to prevent re-initialization on state change
+  }, []); // Empty deps: recognition setup once. isListening change should not re-init.
 
-  const parseTranscript = (text: string) => {
-    // Example: "Book appointment for Rohan, 34, with cough and fever, for Dr. Mehta."
-    // This is a very basic parser. A real app would use NLP.
-    form.setValue('symptoms', text); // For now, put full transcript in symptoms
-    
-    const nameMatch = text.match(/for ([\w\s]+)(, \d+|,)/i);
-    if (nameMatch && nameMatch[1]) {
-      form.setValue('patientName', nameMatch[1].trim());
-    }
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
 
-    const ageMatch = text.match(/, (\d+),/);
-    if (ageMatch && ageMatch[1]) {
-      form.setValue('patientAge', parseInt(ageMatch[1], 10));
-    }
+  const capitalizeName = (name: string) => {
+    return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  }
 
-    const doctorMatch = text.match(/for Dr. ([\w\s]+)/i);
-    if (doctorMatch && doctorMatch[1]) {
-      const doctorName = `Dr. ${doctorMatch[1].trim()}`;
-      const foundDoctor = mockDoctors.find(doc => doc.name.toLowerCase() === doctorName.toLowerCase());
-      if (foundDoctor) {
-        form.setValue('doctorId', foundDoctor.id);
+  const parseTranscript = (originalText: string) => {
+    let text = originalText.toLowerCase();
+    let modifiedTranscript = text; // Keep a copy to remove parsed parts
+
+    let patientNameFound = false;
+    let patientAgeFound = false;
+    let doctorFound = false;
+    let symptomsFound = false;
+
+    // Reset fields that will be parsed, keep others (like date)
+    form.setValue('patientName', '');
+    form.setValue('patientAge', undefined); 
+    // Do not reset doctorId here, allow pre-selection or manual choice to persist unless voice overrides
+    form.setValue('symptoms', '');
+
+    // 1. Parse Doctor
+    // "appointment with dr smith", "for doctor jones"
+    const doctorPatterns = [
+      /(?:with|for|to see|doctor)\s+dr\.?\s*([\w\s]+?)(?:,|\s+about|\s+regarding|\s+for symptoms|$)/i,
+      /dr\.?\s*([\w\s]+?)\s+(?:for|to discuss)/i // "dr smith for cough"
+    ];
+    for (const pattern of doctorPatterns) {
+      const doctorMatch = modifiedTranscript.match(pattern);
+      if (doctorMatch && doctorMatch[1]) {
+        const doctorNameQuery = doctorMatch[1].trim();
+        const foundDoctor = mockDoctors.find(doc => 
+          doc.name.toLowerCase().includes(doctorNameQuery) || 
+          (doc.name.toLowerCase().split(' ').pop() === doctorNameQuery && doctorNameQuery.length > 2) // Match by surname if query is a single word
+        );
+        if (foundDoctor) {
+          form.setValue('doctorId', foundDoctor.id);
+          modifiedTranscript = modifiedTranscript.replace(doctorMatch[0], "").trim();
+          doctorFound = true;
+          break;
+        }
       }
     }
-    toast({ title: "Transcript Processed", description: "Form fields updated based on speech." });
+    
+    // 2. Parse Patient Name
+    // "patient john doe", "name is jane", "appointment for peter"
+    const namePatterns = [
+      /(?:patient name is|patient is|patient|for|name is|name)\s+([a-zA-Z]{2,}(?:\s+[a-zA-Z]{2,})+)(?:,|\s+age(?:d)? is|\s+is about|\s+experiencing|$)/i, // Full name
+      /(?:patient name is|patient is|patient|for|name is|name)\s+([a-zA-Z]{2,})(?:,|\s+age(?:d)? is|\s+is about|\s+experiencing|$)/i // Single name
+    ];
+    for (const pattern of namePatterns) {
+      const nameMatch = modifiedTranscript.match(pattern);
+      if (nameMatch && nameMatch[1]) {
+        const extractedName = nameMatch[1].trim();
+        form.setValue('patientName', capitalizeName(extractedName));
+        modifiedTranscript = modifiedTranscript.replace(nameMatch[0], "").trim();
+        patientNameFound = true;
+        break;
+      }
+    }
+
+    // 3. Parse Patient Age
+    // "34 years old", "age 34", "is 25"
+    const ageMatch = modifiedTranscript.match(/(?:age(?:d)? is|age|is)\s+(\d{1,2})(?:\s+years old)?/i);
+    if (ageMatch && ageMatch[1]) {
+      const ageVal = parseInt(ageMatch[1], 10);
+      if (!isNaN(ageVal) && ageVal >= 0 && ageVal < 130) { // Basic validation for age
+        form.setValue('patientAge', ageVal);
+        modifiedTranscript = modifiedTranscript.replace(ageMatch[0], "").trim();
+        patientAgeFound = true;
+      }
+    }
+    
+    // 4. Parse Symptoms (from remaining text or specific keywords)
+    // "experiencing cough and fever", "symptoms of headache"
+    const specificSymptomsMatch = modifiedTranscript.match(/(?:experiencing|symptoms of|symptoms are|suffering from|complaining of|regarding|about|for)\s+(.+)/i);
+    if (specificSymptomsMatch && specificSymptomsMatch[1]) {
+      let rawSymptoms = specificSymptomsMatch[1].trim();
+       // Remove any trailing conjunctions or prepositions that might lead to doctor name again
+      rawSymptoms = rawSymptoms.replace(/\s+(?:with|for|and|to see)\s+dr\.?.*$/i, '').trim();
+      form.setValue('symptoms', capitalizeFirstLetter(rawSymptoms));
+      symptomsFound = true;
+    } else if (modifiedTranscript.length > 3) { // If substantial text remains after other parsing
+      // Clean up remaining common intro/linking phrases
+      let remainingSymptoms = modifiedTranscript.replace(/^(?:and|also|with|for)\s+/i, '').trim();
+      if (remainingSymptoms.length > 3) {
+        form.setValue('symptoms', capitalizeFirstLetter(remainingSymptoms));
+        symptomsFound = true;
+      }
+    }
+
+    // Final check: if no fields were populated but there was a transcript, put it in symptoms
+    if (!patientNameFound && !patientAgeFound && !doctorFound && !symptomsFound && originalText.length > 0) {
+      form.setValue('symptoms', capitalizeFirstLetter(originalText));
+      toast({ title: "Transcript Not Parsed", description: "Could not extract details. Original transcript placed in symptoms. Please review.", variant: "default" });
+    } else if (patientNameFound || patientAgeFound || doctorFound || symptomsFound) {
+      toast({ title: "Transcript Processed", description: "Form fields updated based on speech. Please verify." });
+    } else {
+       toast({ title: "No Details Parsed", description: "Could not extract details from speech. Please fill the form manually.", variant: "default" });
+    }
   };
 
   const toggleListening = () => {
@@ -131,9 +213,17 @@ export const VoiceAppointmentForm: React.FC = () => {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
+      // Clear previous transcript visual cue
+      setTranscript(''); 
+      // Clear form fields that are typically parsed by voice before starting new recognition
+      form.reset({ 
+        ...form.getValues(), // keep existing values like date/time or manually entered doctor
+        patientName: '', 
+        patientAge: undefined, 
+        symptoms: '' 
+      });
       recognitionRef.current.start();
       setIsListening(true);
-      setTranscript(''); // Clear previous transcript
       toast({ title: "Listening...", description: "Please speak now."});
     }
   };
@@ -147,12 +237,13 @@ export const VoiceAppointmentForm: React.FC = () => {
     
     const appointmentData = {
       ...data,
+      patientAge: data.patientAge, // Ensure age is passed correctly
       doctorName: selectedDoctor.name,
       appointmentDate: data.appointmentDate.toISOString(),
     };
     addAppointment(appointmentData);
     toast({ title: "Appointment Booked!", description: `Appointment for ${data.patientName} with ${selectedDoctor.name} has been scheduled.`});
-    form.reset();
+    form.reset(); // Reset all fields after successful submission
     setTranscript('');
   };
 
@@ -162,7 +253,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         <CardTitle className="flex items-center gap-2 text-2xl font-headline">
           <Mic className="text-primary" /> Voice Appointment Booking
         </CardTitle>
-        <CardDescription>Use your voice or fill the form to book an appointment.</CardDescription>
+        <CardDescription>Use your voice or fill the form to book an appointment. Please verify auto-filled details.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -212,7 +303,13 @@ export const VoiceAppointmentForm: React.FC = () => {
                 <FormItem>
                   <FormLabel className="flex items-center gap-1"><User size={16}/>Patient Age (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 34" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                    <Input 
+                        type="number" 
+                        placeholder="e.g., 34" 
+                        {...field} 
+                        value={field.value === undefined ? '' : field.value} // Handle undefined for controlled number input
+                        onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value))} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -237,7 +334,7 @@ export const VoiceAppointmentForm: React.FC = () => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-1"><BriefcaseMedical size={16}/>Doctor</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""} >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a doctor" />
@@ -286,9 +383,10 @@ export const VoiceAppointmentForm: React.FC = () => {
                         selected={field.value}
                         onSelect={(date) => {
                             if (date) {
-                                const now = new Date();
-                                date.setHours(now.getHours());
-                                date.setMinutes(now.getMinutes());
+                                const currentHours = field.value ? field.value.getHours() : new Date().getHours();
+                                const currentMinutes = field.value ? field.value.getMinutes() : new Date().getMinutes();
+                                date.setHours(currentHours);
+                                date.setMinutes(currentMinutes);
                                 field.onChange(date);
                             }
                         }}
@@ -300,7 +398,7 @@ export const VoiceAppointmentForm: React.FC = () => {
                             <Input 
                                 type="time" 
                                 id="time"
-                                defaultValue={field.value ? format(field.value, "HH:mm") : format(new Date(), "HH:mm")}
+                                value={field.value ? format(field.value, "HH:mm") : format(new Date(), "HH:mm")}
                                 onChange={(e) => {
                                     const newTime = e.target.value;
                                     const [hours, minutes] = newTime.split(':').map(Number);
@@ -329,4 +427,3 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
-

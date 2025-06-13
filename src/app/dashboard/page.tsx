@@ -109,14 +109,14 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-8 font-headline text-primary">Doctor Dashboard</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <UpcomingAppointments onAppointmentSelect={handleAppointmentClick} />
-          </div>
           <div className="lg:col-span-2 space-y-6" ref={prescriptionSectionRef}>
             <PrescriptionGenerator 
               selectedPatient={selectedPatient}
               onPatientRecordUpdated={handlePatientRecordUpdate} 
             />
+          </div>
+          <div className="lg:col-span-1 space-y-6">
+            <UpcomingAppointments onAppointmentSelect={handleAppointmentClick} />
           </div>
         </div>
 

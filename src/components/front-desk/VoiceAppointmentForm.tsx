@@ -18,7 +18,7 @@ import type { Doctor } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format as formatDate, parseISO, setHours, setMinutes, setSeconds, setMilliseconds } from "date-fns";
+import { format as formatDate } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { parseAppointmentTranscript } from '@/ai/flows/parse-appointment-transcript-flow';
@@ -35,7 +35,6 @@ const appointmentFormSchema = z.object({
 
 type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
 
-// Extend Window interface for SpeechRecognition
 declare global {
   interface Window {
     SpeechRecognition: any;
@@ -51,6 +50,8 @@ const defaultFormValues: Partial<AppointmentFormValues> = {
     appointmentDate: undefined,
 };
 
+const LONG_PRESS_DURATION = 500; // milliseconds
+
 export const VoiceAppointmentForm: React.FC = () => {
   const { addAppointment } = useAppState();
   const { toast } = useToast();
@@ -59,6 +60,8 @@ export const VoiceAppointmentForm: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [speechApiAvailable, setSpeechApiAvailable] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSpacebarDownRef = useRef(false);
   
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
@@ -78,7 +81,7 @@ export const VoiceAppointmentForm: React.FC = () => {
       recognition.onresult = async (event: any) => {
         const currentTranscript = event.results[0][0].transcript;
         setTranscript(currentTranscript);
-        setIsListening(false); // Stop listening UI cue
+        setIsListening(false); 
         await processTranscriptWithAI(currentTranscript);
       };
 
@@ -107,7 +110,49 @@ export const VoiceAppointmentForm: React.FC = () => {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isListening]); 
+  }, []); 
+
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ' ' && !event.repeat && !isSpacebarDownRef.current) {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          return; // Don't interfere with typing in inputs
+        }
+        
+        isSpacebarDownRef.current = true;
+        longPressTimerRef.current = setTimeout(() => {
+          if (speechApiAvailable && !isListening && !isParsingTranscript) {
+            toggleListening();
+          }
+        }, LONG_PRESS_DURATION);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === ' ') {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        isSpacebarDownRef.current = false;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isListening, isParsingTranscript, speechApiAvailable]);
+
 
   const capitalizeFirstLetter = (string: string) => {
     if (!string) return "";
@@ -142,7 +187,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         form.setValue('patientName', capitalizeName(result.patientName));
         fieldsUpdatedCount++;
       }
-      if (result.patientAge !== undefined) {
+      if (result.patientAge !== undefined && !isNaN(result.patientAge)) {
         form.setValue('patientAge', result.patientAge);
         fieldsUpdatedCount++;
       }
@@ -227,8 +272,7 @@ export const VoiceAppointmentForm: React.FC = () => {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setTranscript(''); // Clear only the transcript for the new input
-      // Form fields remain as they are, allowing for continued filling
+      setTranscript(''); 
       recognitionRef.current.start();
       setIsListening(true);
       toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
@@ -275,7 +319,7 @@ export const VoiceAppointmentForm: React.FC = () => {
         <CardTitle className="flex items-center gap-2 text-2xl font-headline">
           <Mic className="text-primary" /> Voice Appointment Booking
         </CardTitle>
-        <CardDescription>Use your voice or fill the form to book an appointment. AI will attempt to fill fields. Please verify all details.</CardDescription>
+        <CardDescription>Use your voice (or long-press Spacebar) or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -480,3 +524,5 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
+
+    

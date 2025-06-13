@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAppState } from '@/hooks/useAppState';
 import type { Patient } from '@/types';
+import type { SortableField } from '@/context/AppStateContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,10 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { EditPatientForm } from './EditPatientForm';
-import { Users, Pencil, FileText, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Users, Pencil, FileText, ChevronDown, ChevronUp, Clock, SortAsc, SortDesc } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface PatientListProps {
   onSelectPatient?: (patient: Patient) => void;
@@ -24,7 +27,7 @@ interface PatientListProps {
 const INITIAL_PATIENTS_COUNT = 3;
 
 export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => {
-  const { patients, isLoadingPatients } = useAppState();
+  const { patients, isLoadingPatients, sortConfig, setSortConfig } = useAppState();
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [patientToViewPrescriptions, setPatientToViewPrescriptions] = useState<Patient | null>(null);
@@ -94,10 +97,44 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     <>
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-            <Users className="text-primary" /> Patient Records
-          </CardTitle>
-          <CardDescription>Overview of all registered patients. Click a row to select for prescription or click Edit to modify.</CardDescription>
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+                <Users className="text-primary" /> Patient Records
+              </CardTitle>
+              <CardDescription>Overview of all registered patients. Click a row to select for prescription or click Edit to modify.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Label htmlFor="sort-field" className="text-sm font-medium text-muted-foreground whitespace-nowrap">Sort by:</Label>
+              <Select
+                value={sortConfig.field}
+                onValueChange={(value) => setSortConfig({ ...sortConfig, field: value as SortableField })}
+              >
+                <SelectTrigger id="sort-field" className="w-[160px] h-9">
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lastActivity">Last Activity</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="age">Age</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() =>
+                  setSortConfig({
+                    ...sortConfig,
+                    direction: sortConfig.direction === 'asc' ? 'desc' : 'asc',
+                  })
+                }
+                aria-label={`Sort ${sortConfig.direction === 'asc' ? 'descending' : 'ascending'}`}
+              >
+                {sortConfig.direction === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -231,3 +268,4 @@ export const PatientList: React.FC<PatientListProps> = ({ onSelectPatient }) => 
     </>
   );
 };
+

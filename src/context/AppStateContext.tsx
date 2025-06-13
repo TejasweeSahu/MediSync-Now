@@ -7,6 +7,9 @@ import * as patientService from '@/services/patientService';
 import * as appointmentService from '@/services/appointmentService';
 import { parse as parseDate } from 'date-fns'; // Import parse from date-fns
 
+export type SortableField = 'lastActivity' | 'name' | 'age';
+export type SortDirection = 'asc' | 'desc';
+
 interface AppStateContextType {
   patients: Patient[];
   isLoadingPatients: boolean;
@@ -20,6 +23,8 @@ interface AppStateContextType {
   getAppointmentsForDoctor: (doctorId: string) => Appointment[];
   refreshAppointments: () => Promise<void>;
   refreshPatients: () => Promise<void>;
+  sortConfig: { field: SortableField; direction: SortDirection };
+  setSortConfig: (config: { field: SortableField; direction: SortDirection }) => void;
 }
 
 export const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
@@ -48,26 +53,52 @@ const getLatestActivityDate = (patient: Patient): Date => {
   return latestDate;
 };
 
+// Helper function to get the value for sorting
+const getValueForSortField = (patient: Patient, field: SortableField): string | number | Date => {
+  switch (field) {
+    case 'name':
+      return patient.name.toLowerCase(); // Ensure case-insensitive sort for names
+    case 'age':
+      return patient.age;
+    case 'lastActivity':
+      return getLatestActivityDate(patient);
+    default:
+      // Should not happen with TypeScript, but good practice for robustness
+      return getLatestActivityDate(patient);
+  }
+};
+
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{ field: SortableField; direction: SortDirection }>({ field: 'lastActivity', direction: 'desc' });
 
   const fetchPatients = useCallback(async () => {
     setIsLoadingPatients(true);
     try {
-      const fetchedPatients = await patientService.getPatients();
+      let fetchedPatients = await patientService.getPatients();
       
-      // Sort patients by latest activity (prescription or creation) in descending order
+      // Apply sorting based on sortConfig
       fetchedPatients.sort((a, b) => {
-        const dateA = getLatestActivityDate(a).getTime();
-        const dateB = getLatestActivityDate(b).getTime();
-        return dateB - dateA; // Latest first
-      });
+        const valA = getValueForSortField(a, sortConfig.field);
+        const valB = getValueForSortField(b, sortConfig.field);
 
-      // After sorting, map to add the displayActivityTimestamp
+        let comparison = 0;
+        if (valA instanceof Date && valB instanceof Date) {
+          comparison = valA.getTime() - valB.getTime();
+        } else if (typeof valA === 'number' && typeof valB === 'number') {
+          comparison = valA - valB;
+        } else if (typeof valA === 'string' && typeof valB === 'string') {
+          comparison = valA.localeCompare(valB);
+        }
+        // Add more type checks if other sortable field types are introduced
+
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+      
       const patientsWithDisplayTimestamp = fetchedPatients.map(patient => ({
         ...patient,
         displayActivityTimestamp: getLatestActivityDate(patient).toISOString(),
@@ -75,11 +106,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
       setPatients(patientsWithDisplayTimestamp);
     } catch (error) {
-      console.error("Error fetching patients:", error);
+      console.error("Error fetching or sorting patients:", error);
     } finally {
       setIsLoadingPatients(false);
     }
-  }, []);
+  }, [sortConfig]); // sortConfig is now a dependency
 
   const fetchAppointments = useCallback(async () => {
     setIsLoadingAppointments(true);
@@ -101,14 +132,12 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     };
     seedAndFetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [fetchPatients, fetchAppointments]); // fetchPatients will change if sortConfig changes, re-triggering
 
 
   const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]}): Promise<Patient> => {
     const newPatient = await patientService.addPatient(patientData);
     await fetchPatients(); 
-    // The newPatient from service won't have displayActivityTimestamp; fetchPatients will add it.
-    // For immediate use, find it in the refreshed list or add it manually if needed.
     const refreshedPatient = patients.find(p => p.id === newPatient.id) || {
         ...newPatient,
         displayActivityTimestamp: getLatestActivityDate(newPatient).toISOString(),
@@ -155,8 +184,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       getAppointmentsForDoctor: getAppointmentsForDoctorContext,
       refreshAppointments: fetchAppointments,
       refreshPatients: fetchPatients,
+      sortConfig,
+      setSortConfig,
     }}>
       {children}
     </AppStateContext.Provider>
   );
 };
+

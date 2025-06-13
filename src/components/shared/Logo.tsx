@@ -1,4 +1,6 @@
 
+'use client';
+
 import React from 'react';
 import { HeartPulse } from 'lucide-react';
 import Link from 'next/link';

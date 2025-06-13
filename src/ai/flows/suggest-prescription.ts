@@ -65,7 +65,7 @@ Known Doctor Preferences/Patterns: {{{doctorPreferences}}}
 Output Format Guidance:
 Provide the prescription in a structured format as defined by the output schema.
 1.  **Medications**:
-    *   List each medication with its `name`, `dosage` (e.g., "500mg tablet", "10mg/5ml syrup"), `frequency` (e.g., "once daily", "every 8 hours"), `duration` (e.g., "for 10 days", "as needed"), `route` (e.g., "oral", "topical") and any `additionalInstructions` specific to that drug (e.g., "take with meals").
+    *   List each medication with its name, dosage (e.g., "500mg tablet", "10mg/5ml syrup"), frequency (e.g., "once daily", "every 8 hours"), duration (e.g., "for 10 days", "as needed"), route (e.g., "oral", "topical") and any additionalInstructions specific to that drug (e.g., "take with meals").
     *   If no medication is appropriate, provide an empty array for medications and explain why in 'additionalNotes'.
 2.  **General Instructions**: Provide any overall advice for the patient not specific to a single medication (e.g., "Increase fluid intake", "Get plenty of rest").
 3.  **Follow Up**: Suggest when and under what conditions the patient should seek follow-up care.

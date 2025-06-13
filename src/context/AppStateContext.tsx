@@ -9,8 +9,8 @@ import * as appointmentService from '@/services/appointmentService';
 interface AppStateContextType {
   patients: Patient[];
   isLoadingPatients: boolean;
-  addPatient: (patientData: Omit<Patient, 'id' | 'prescriptions'> & {prescriptions?: string[]}) => Promise<Patient>;
-  updatePatient: (patientId: string, updatedData: Partial<Omit<Patient, 'id'>>) => Promise<void>;
+  addPatient: (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]}) => Promise<Patient>;
+  updatePatient: (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt'>>) => Promise<void>;
   addPrescriptionToPatient: (patientId: string, prescriptionText: string) => Promise<void>;
   appointments: Appointment[];
   isLoadingAppointments: boolean;
@@ -32,12 +32,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const fetchPatients = useCallback(async () => {
     setIsLoadingPatients(true);
     try {
-      // await patientService.seedInitialPatientsIfEmpty(); // Seed if empty on first load
       const fetchedPatients = await patientService.getPatients();
+      // Sort patients by createdAt in descending order (latest first)
+      fetchedPatients.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
       setPatients(fetchedPatients);
     } catch (error) {
       console.error("Error fetching patients:", error);
-      // Handle error (e.g., show toast)
     } finally {
       setIsLoadingPatients(false);
     }
@@ -56,63 +60,49 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   useEffect(() => {
-    // Seed initial patient data to Firestore if the collection is empty.
-    // This is primarily for demo purposes. In a real app, data management is more complex.
-    // This check runs once when the app loads.
-    const seedData = async () => {
+    const seedAndFetchData = async () => {
         await patientService.seedInitialPatientsIfEmpty();
-        // After potential seeding, fetch patients.
-        fetchPatients();
+        fetchPatients(); // Fetch patients after seeding attempt
+        fetchAppointments();
     };
-    seedData();
-    fetchAppointments();
-  }, [fetchPatients, fetchAppointments]);
+    seedAndFetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Removed fetchPatients, fetchAppointments from dependency array to avoid re-triggering on their identity change
 
 
-  const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions'> & {prescriptions?: string[]}): Promise<Patient> => {
+  const addPatientContext = useCallback(async (patientData: Omit<Patient, 'id' | 'prescriptions' | 'createdAt'> & {prescriptions?: string[]}): Promise<Patient> => {
     const newPatient = await patientService.addPatient(patientData);
-    setPatients((prev) => [...prev, newPatient]);
-    return newPatient;
-  }, []);
+    // After adding, refresh all patients to get the correct server-generated timestamp and ensure sorted order
+    await fetchPatients(); 
+    return newPatient; // Note: newPatient here will have client-side timestamp, list will have server one after fetch
+  }, [fetchPatients]);
 
-  const updatePatientContext = useCallback(async (patientId: string, updatedData: Partial<Omit<Patient, 'id'>>) => {
+  const updatePatientContext = useCallback(async (patientId: string, updatedData: Partial<Omit<Patient, 'id' | 'createdAt'>>) => {
     await patientService.updatePatient(patientId, updatedData);
-    setPatients((prevPatients) =>
-      prevPatients.map((p) => (p.id === patientId ? { ...p, ...updatedData } : p))
-    );
-  }, []);
+    // After updating, refresh all patients to ensure sorted order and reflect changes
+    await fetchPatients();
+  }, [fetchPatients]);
 
   const addPrescriptionToPatientContext = useCallback(async (patientId: string, prescriptionText: string) => {
     await patientService.addPrescriptionToPatientFS(patientId, prescriptionText);
-    setPatients((prevPatients) =>
-      prevPatients.map((p) =>
-        p.id === patientId
-          ? {
-              ...p,
-              prescriptions: [...(p.prescriptions || []), prescriptionText],
-            }
-          : p
-      )
-    );
-  }, []);
+    // After adding prescription, refresh patients to reflect changes (especially if updatedAt were used)
+    await fetchPatients(); 
+  }, [fetchPatients]);
 
   const addAppointmentContext = useCallback(async (appointmentData: Omit<Appointment, 'id' | 'status'>): Promise<Appointment> => {
     const newAppointment = await appointmentService.addAppointment(appointmentData);
-    setAppointments((prevAppointments) => [...prevAppointments, newAppointment]);
-    return newAppointment;
-  }, []);
+    // After adding, refresh appointments
+    await fetchAppointments();
+    return newAppointment; // Similar to patients, this returns the immediate object. List will be updated.
+  }, [fetchAppointments]);
 
   const updateAppointmentStatusContext = useCallback(async (appointmentId: string, status: Appointment['status']) => {
     await appointmentService.updateAppointmentStatus(appointmentId, status);
-    setAppointments((prevAppointments) =>
-      prevAppointments.map((app) =>
-        app.id === appointmentId ? { ...app, status } : app
-      )
-    );
-  }, []);
+    // After updating, refresh appointments
+    await fetchAppointments();
+  }, [fetchAppointments]);
 
   const getAppointmentsForDoctorContext = useCallback((doctorId: string) => {
-    // This filters loaded appointments. For real-time, service would query Firestore.
     return appointments.filter(app => app.doctorId === doctorId).sort((a,b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
   }, [appointments]);
 

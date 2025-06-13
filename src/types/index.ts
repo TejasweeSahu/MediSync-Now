@@ -7,6 +7,7 @@ export interface Patient {
   history: string;
   avatarUrl?: string;
   prescriptions?: string[]; // Added to store prescription texts
+  createdAt: string; // Added for sorting
 }
 
 export interface Appointment {

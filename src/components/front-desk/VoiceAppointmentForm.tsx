@@ -194,7 +194,11 @@ export const VoiceAppointmentForm: React.FC = () => {
 
     } catch (error) {
       console.error('Error parsing transcript with AI:', error);
-      toast({ title: "AI Processing Error", description: "Failed to parse transcript. Please fill the form manually.", variant: "destructive" });
+      toast({ 
+        title: "AI Processing Error", 
+        description: "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.", 
+        variant: "destructive" 
+      });
       form.setValue('symptoms', capitalizeFirstLetter(originalText)); // Fallback
     } finally {
       setIsParsingTranscript(false);

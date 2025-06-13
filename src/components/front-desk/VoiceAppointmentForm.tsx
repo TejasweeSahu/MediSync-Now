@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -62,109 +62,14 @@ export const VoiceAppointmentForm: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSpacebarDownRef = useRef(false);
+  const listeningStartedBySpacebarRef = useRef(false);
   
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: defaultFormValues,
   });
 
-  useEffect(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognitionAPI) {
-      setSpeechApiAvailable(true);
-      recognitionRef.current = new SpeechRecognitionAPI();
-      const recognition = recognitionRef.current;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-
-      recognition.onresult = async (event: any) => {
-        const currentTranscript = event.results[0][0].transcript;
-        setTranscript(currentTranscript);
-        setIsListening(false); 
-        await processTranscriptWithAI(currentTranscript);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        toast({ title: "Speech Recognition Error", description: event.error || "Unknown error", variant: "destructive"});
-        setIsListening(false);
-      };
-      
-      recognition.onend = () => {
-        if (isListening) { 
-            setIsListening(false);
-            if (!transcript) { 
-                toast({ title: "No speech detected", description: "Please try speaking again.", variant: "default"});
-            }
-        }
-      };
-
-    } else {
-      setSpeechApiAvailable(false);
-      console.warn('Speech Recognition API not available.');
-    }
-    return () => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
-
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === ' ' && !event.repeat && !isSpacebarDownRef.current) {
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-          return; // Don't interfere with typing in inputs
-        }
-        
-        isSpacebarDownRef.current = true;
-        longPressTimerRef.current = setTimeout(() => {
-          if (speechApiAvailable && !isListening && !isParsingTranscript) {
-            toggleListening();
-          }
-        }, LONG_PRESS_DURATION);
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === ' ') {
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-        isSpacebarDownRef.current = false;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isListening, isParsingTranscript, speechApiAvailable]);
-
-
-  const capitalizeFirstLetter = (string: string) => {
-    if (!string) return "";
-    return string.charAt(0).toUpperCase() + string.slice(1);
-  }
-
-  const capitalizeName = (name: string) => {
-    if (!name) return "";
-    return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  }
-
-  const processTranscriptWithAI = async (originalText: string) => {
+  const processTranscriptWithAI = useCallback(async (originalText: string) => {
     if (!originalText.trim()) {
       toast({ title: "Empty transcript", description: "Nothing to parse.", variant: "default" });
       return;
@@ -260,24 +165,138 @@ export const VoiceAppointmentForm: React.FC = () => {
     } finally {
       setIsParsingTranscript(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, toast]);
+
+  useEffect(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      setSpeechApiAvailable(true);
+      recognitionRef.current = new SpeechRecognitionAPI();
+      const recognition = recognitionRef.current;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = async (event: any) => {
+        const currentTranscript = event.results[0][0].transcript;
+        setTranscript(currentTranscript);
+        setIsListening(false); 
+        await processTranscriptWithAI(currentTranscript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        toast({ title: "Speech Recognition Error", description: event.error || "Unknown error", variant: "destructive"});
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        // Check if it was truly listening and didn't stop programmatically before onend
+        // This 'isListening' is from the closure, so it might be stale if setIsListening was called just before onend.
+        // However, if recognition stops naturally, setIsListening(false) here is the correct action.
+        if (isListening) { 
+            setIsListening(false);
+            // Avoid toast if transcript was processed or is being parsed.
+            if (!transcript && !isParsingTranscript) { 
+                toast({ title: "No speech detected", description: "Please try speaking again.", variant: "default"});
+            }
+        }
+      };
+
+    } else {
+      setSpeechApiAvailable(false);
+      console.warn('Speech Recognition API not available.');
+    }
+    return () => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processTranscriptWithAI, toast]); // isListening, transcript, isParsingTranscript are handled by their setters or direct logic
 
 
-  const toggleListening = () => {
+  // Reset spacebar listening flag if listening stops for any reason
+  useEffect(() => {
+    if (!isListening) {
+      listeningStartedBySpacebarRef.current = false;
+    }
+  }, [isListening]);
+
+  const toggleListening = useCallback(() => {
     if (!speechApiAvailable) {
       toast({ title: "Feature Unavailable", description: "Speech recognition is not supported in your browser.", variant: "destructive"});
       return;
     }
     if (isListening) {
       recognitionRef.current.stop();
-      setIsListening(false);
+      setIsListening(false); // This will trigger the useEffect above to reset listeningStartedBySpacebarRef
     } else {
       setTranscript(''); 
       recognitionRef.current.start();
       setIsListening(true);
       toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
     }
-  };
+  }, [speechApiAvailable, isListening, toast, setTranscript]);
+
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ' ' && !event.repeat && !isSpacebarDownRef.current) {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          return; 
+        }
+        
+        isSpacebarDownRef.current = true;
+        longPressTimerRef.current = setTimeout(() => {
+          if (speechApiAvailable && !isListening && !isParsingTranscript) {
+            listeningStartedBySpacebarRef.current = true; // Mark that spacebar started this session
+            toggleListening();
+          }
+        }, LONG_PRESS_DURATION);
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === ' ') {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        if (isSpacebarDownRef.current) {
+          if (listeningStartedBySpacebarRef.current && isListening && recognitionRef.current) {
+            recognitionRef.current.stop(); // Stop listening; onend will set isListening to false
+          }
+          isSpacebarDownRef.current = false;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, [isListening, isParsingTranscript, speechApiAvailable, toggleListening]);
+
+
+  const capitalizeFirstLetter = (string: string) => {
+    if (!string) return "";
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  }
+
+  const capitalizeName = (name: string) => {
+    if (!name) return "";
+    return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  }
+  
 
   const onSubmit: SubmitHandler<AppointmentFormValues> = (data) => {
     const selectedDoctor = mockDoctors.find(doc => doc.id === data.doctorId);
@@ -524,5 +543,4 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
-
     

@@ -273,45 +273,45 @@ export const VoiceAppointmentForm: React.FC = () => {
 
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-          <Mic className="text-primary" /> Voice Appointment Booking
-        </CardTitle>
-        <CardDescription>Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <Mic className="text-primary" /> Voice Appointment Booking
+          </CardTitle>
+          <CardDescription>Use your voice or fill the form to book. AI will attempt to fill fields. Please verify all details.</CardDescription>
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              onClick={toggleListening}
+              variant={isListening ? "destructive" : "default"}
+              size="icon"
+              className="rounded-full w-14 h-14 flex-shrink-0" 
+              disabled={!speechApiAvailable || isParsingTranscript}
+              aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
+            >
+              {isListening ? (
+                <MicOff className="h-6 w-6" />
+              ) : isParsingTranscript ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <Mic className="h-6 w-6" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{isListening ? "Stop Listening" : isParsingTranscript ? "Processing..." : "Start Voice Input"}</p>
+          </TooltipContent>
+        </Tooltip>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-center gap-4">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    onClick={toggleListening}
-                    variant={isListening ? "destructive" : "default"}
-                    size="icon"
-                    className="rounded-full w-14 h-14" 
-                    disabled={!speechApiAvailable || isParsingTranscript}
-                    aria-label={isListening ? "Stop Listening" : isParsingTranscript ? "Processing Voice Input" : "Start Voice Input"}
-                  >
-                    {isListening ? (
-                      <MicOff className="h-6 w-6" />
-                    ) : isParsingTranscript ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <Mic className="h-6 w-6" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isListening ? "Stop Listening" : isParsingTranscript ? "Processing..." : "Start Voice Input"}</p>
-                </TooltipContent>
-              </Tooltip>
-              {!speechApiAvailable && <p className="text-sm text-destructive">Speech recognition not available in this browser.</p>}
-              {transcript && (
-                <p className="text-sm text-muted-foreground italic">Transcript: "{transcript}"</p>
-              )}
-            </div>
+          <CardContent className="space-y-6 pt-6"> {/* Added pt-6 to CardContent as header has default p-6 */}
+            {!speechApiAvailable && <p className="text-sm text-destructive text-center">Speech recognition not available in this browser.</p>}
+            {transcript && (
+              <p className="text-sm text-muted-foreground italic text-center">Transcript: "{transcript}"</p>
+            )}
 
             {isParsingTranscript && (
               <div className="flex items-center justify-center p-3 my-2 rounded-md bg-muted/30 border border-dashed border-primary/50">

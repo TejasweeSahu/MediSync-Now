@@ -297,7 +297,7 @@ export const VoiceAppointmentForm: React.FC = () => {
                 {isListening ? (
                   <MicOff className="h-6 w-6" />
                 ) : isParsingTranscript ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Mic className="h-7 w-7 animate-pulse text-primary-foreground" />
                 ) : (
                   <Mic className="h-6 w-6" />
                 )}

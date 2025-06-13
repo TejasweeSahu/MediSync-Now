@@ -153,21 +153,16 @@ export const VoiceAppointmentForm: React.FC = () => {
       
       if (result.doctorQuery) {
         let doctorQueryNormalized = result.doctorQuery.toLowerCase();
-        // Remove common prefixes like "dr. ", "dr ", "doctor "
         doctorQueryNormalized = doctorQueryNormalized.replace(/^dr\.?\s*/, '').replace(/^doctor\s*/, '');
 
         const foundDoctor = mockDoctors.find(doc => {
           const doctorNameLower = doc.name.toLowerCase();
-          // Remove prefixes from the doctor's name for matching
           const doctorNameNormalized = doctorNameLower.replace(/^dr\.?\s*/, '').replace(/^doctor\s*/, '');
           const doctorNameParts = doctorNameNormalized.split(' ');
 
-          // Check if the normalized query is part of the normalized full name
           if (doctorNameNormalized.includes(doctorQueryNormalized)) {
             return true;
           }
-          // Check if the normalized query matches any part of the doctor's name (e.g., last name or first name)
-          // and the query is reasonably long to avoid accidental matches with short words.
           return doctorNameParts.some(part => doctorQueryNormalized.includes(part) && part.length > 2) || 
                  doctorNameParts.some(part => part.includes(doctorQueryNormalized) && doctorQueryNormalized.length > 2);
         });
@@ -184,7 +179,6 @@ export const VoiceAppointmentForm: React.FC = () => {
         try {
           const [year, month, day] = result.appointmentDateYYYYMMDD.split('-').map(Number);
           const [hours, minutes] = result.appointmentTimeHHMM.split(':').map(Number);
-          // Month is 0-indexed in JavaScript Date
           const parsedDateTime = new Date(year, month - 1, day, hours, minutes);
           
           if (!isNaN(parsedDateTime.getTime())) {
@@ -202,24 +196,22 @@ export const VoiceAppointmentForm: React.FC = () => {
       }
       
       if (fieldsUpdatedCount > 0) {
-        toast({ title: "Transcript Processed by AI", description: `Form fields updated (${fieldsUpdatedCount} fields). Please verify.`, icon: <Sparkles className="h-4 w-4" /> });
-      } else {
-        form.setValue('symptoms', capitalizeFirstLetter(originalText)); // Fallback
-        toast({ title: "AI Could Not Extract Details", description: "Original transcript placed in symptoms. Please review and fill other fields.", variant: "default" });
+        toast({ title: "Transcript Processed by AI", description: `Form fields updated (${fieldsUpdatedCount} fields). Previous data retained or updated. Please verify.`, icon: <Sparkles className="h-4 w-4" /> });
+      } else if (originalText.trim()) {
+        toast({ title: "AI Did Not Update Fields", description: "No new specific details were extracted from your latest voice input. Existing information remains.", variant: "default" });
       }
 
     } catch (error: any) {
       console.error('Error parsing transcript with AI:', error);
        let errorMessage = "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.";
-      if (error.message && (error.message.includes('503 Service Unavailable') || error.message.includes('overloaded'))) {
-        errorMessage = "The AI model is currently overloaded. Please try again in a few moments, or fill the form manually.";
+      if (error.message && (error.message.includes('503 Service Unavailable') || error.message.includes('overloaded') || error.message.includes('The model is overloaded'))) {
+        errorMessage = "The AI model is currently overloaded or unavailable. Please try again in a few moments, or fill the form manually.";
       }
       toast({ 
         title: "AI Processing Error", 
         description: errorMessage, 
         variant: "destructive" 
       });
-      form.setValue('symptoms', capitalizeFirstLetter(originalText)); // Fallback
     } finally {
       setIsParsingTranscript(false);
     }
@@ -235,17 +227,11 @@ export const VoiceAppointmentForm: React.FC = () => {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setTranscript(''); 
-      // Reset only AI-fillable fields, keep doctor/date if manually set
-      form.reset({ 
-        ...form.getValues(), 
-        patientName: '', 
-        patientAge: undefined, 
-        symptoms: '' 
-      });
+      setTranscript(''); // Clear only the transcript for the new input
+      // Form fields remain as they are, allowing for continued filling
       recognitionRef.current.start();
       setIsListening(true);
-      toast({ title: "Listening...", description: "Please speak now."});
+      toast({ title: "Listening...", description: "Please speak now. Previous entries will be retained or updated if new information is provided."});
     }
   };
 
@@ -494,6 +480,3 @@ export const VoiceAppointmentForm: React.FC = () => {
     </Card>
   );
 };
-
-
-    

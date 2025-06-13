@@ -22,7 +22,7 @@ import { format as formatDate, parseISO, setHours, setMinutes, setSeconds, setMi
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { parseAppointmentTranscript } from '@/ai/flows/parse-appointment-transcript-flow';
-import type { ParseAppointmentTranscriptOutput, ParseAppointmentTranscriptInput } from '@/ai/flows/parse-appointment-transcript-flow';
+import type { ParseAppointmentTranscriptInput, ParseAppointmentTranscriptOutput } from '@/ai/flows/parse-appointment-transcript-flow';
 
 
 const appointmentFormSchema = z.object({
@@ -192,11 +192,15 @@ export const VoiceAppointmentForm: React.FC = () => {
         toast({ title: "AI Could Not Extract Details", description: "Original transcript placed in symptoms. Please review and fill other fields.", variant: "default" });
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error parsing transcript with AI:', error);
+       let errorMessage = "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.";
+      if (error.message && error.message.includes('503 Service Unavailable')) {
+        errorMessage = "The AI model is currently overloaded. Please try again in a few moments, or fill the form manually.";
+      }
       toast({ 
         title: "AI Processing Error", 
-        description: "The AI service is currently unavailable or overloaded. Please try again in a few moments, or fill the form manually.", 
+        description: errorMessage, 
         variant: "destructive" 
       });
       form.setValue('symptoms', capitalizeFirstLetter(originalText)); // Fallback
@@ -302,6 +306,13 @@ export const VoiceAppointmentForm: React.FC = () => {
                 <p className="text-sm text-muted-foreground italic">Transcript: "{transcript}"</p>
               )}
             </div>
+
+            {isParsingTranscript && (
+              <div className="flex items-center justify-center p-3 my-2 rounded-md bg-muted/30 border border-dashed border-primary/50">
+                <Loader2 className="mr-3 h-5 w-5 animate-spin text-primary" />
+                <p className="text-sm text-primary font-medium">AI is populating the form from your transcript...</p>
+              </div>
+            )}
 
             <FormField
               control={form.control}
@@ -455,7 +466,7 @@ export const VoiceAppointmentForm: React.FC = () => {
             </Button>
             <Button 
               type="submit" 
-              className="w-full sm:w-auto" 
+              className="w-full sm-w-auto" 
               disabled={form.formState.isSubmitting || isParsingTranscript || isListening}
             >
               {(form.formState.isSubmitting || isParsingTranscript) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -468,3 +479,5 @@ export const VoiceAppointmentForm: React.FC = () => {
   );
 };
 
+
+    

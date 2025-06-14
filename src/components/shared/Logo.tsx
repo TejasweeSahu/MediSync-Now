@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -22,17 +23,12 @@ export const Logo: React.FC<LogoProps> = ({ className, iconSize = 28, textSize =
 
   return (
     <Link
-      // If onLogoClick is present, make href="#" to signify action, else navigate to home
       href={onLogoClick ? '#' : '/'}
-      legacyBehavior
+      onClick={onLogoClick ? handleLinkClick : undefined}
+      className={`flex items-center gap-2 text-primary ${className}`}
     >
-      <a
-        className={`flex items-center gap-2 text-primary ${className}`}
-        onClick={onLogoClick ? handleLinkClick : undefined}
-      >
-        <HeartPulse size={iconSize} />
-        <span className={`font-headline font-bold ${textSize}`}>MediSync Now</span>
-      </a>
+      <HeartPulse size={iconSize} />
+      <span className={`font-headline font-bold ${textSize}`}>MediSync Now</span>
     </Link>
   );
 };

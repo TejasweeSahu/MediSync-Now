@@ -48,7 +48,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
   const [currentSuggestionData, setCurrentSuggestionData] = useState<CurrentSuggestionState | null>(null);
   const [editedSuggestion, setEditedSuggestion] = useState<SuggestPrescriptionOutput | null>(null);
   const { toast } = useToast();
-  const { addPatient, addPrescriptionToPatient, patients: allPatientsFromContext, refreshPatients } = useAppState();
+  const { addPatient, updatePatient, addPrescriptionToPatient, patients: allPatientsFromContext, refreshPatients } = useAppState();
   const { doctor } = useAuth();
 
   const form = useForm<PrescriptionFormValues>({
@@ -69,7 +69,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         selectedPatient.history === defaultHistoryMessage &&
         selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0
       ) {
-        historyForForm = ''; // Clear history if it's the default message AND there are prior prescriptions
+        historyForForm = ''; 
       }
 
       form.reset({
@@ -79,17 +79,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       });
       setCurrentSuggestionData(null); 
       setEditedSuggestion(null);
-      setIsAISuggesting(false); 
-      setIsSaving(false);
+      // Keep isAISuggesting and isSaving as they are, they manage active processes.
     } else {
       form.reset({ symptoms: '', diagnosis: '', patientHistory: '' });
       setCurrentSuggestionData(null);
       setEditedSuggestion(null);
-      setIsAISuggesting(false);
-      setIsSaving(false);
+      // setIsAISuggesting(false); // Only reset if needed, typically on deselection.
+      // setIsSaving(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient]);
+  }, [selectedPatient]); // form.reset is stable
 
   const handleGenerateSuggestion: SubmitHandler<PrescriptionFormValues> = async (data) => {
     setIsAISuggesting(true);
@@ -98,7 +97,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     try {
       let priorPrescriptionsString: string | undefined = undefined;
       if (selectedPatient && selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0) {
-        priorPrescriptionsString = selectedPatient.prescriptions.join('\n\n---\n\n'); // Join with a clear separator
+        priorPrescriptionsString = selectedPatient.prescriptions.join('\n\n---\n\n');
       }
 
       const aiInput: SuggestPrescriptionInput = {
@@ -110,7 +109,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       };
       const result = await suggestPrescription(aiInput);
       setCurrentSuggestionData({ suggestion: result, symptoms: data.symptoms, diagnosis: data.diagnosis });
-      setEditedSuggestion(JSON.parse(JSON.stringify(result))); // Deep copy for editing
+      setEditedSuggestion(JSON.parse(JSON.stringify(result))); 
       toast({
         title: "Prescription Suggested",
         description: "AI has generated a structured prescription suggestion. You can edit it below.",
@@ -181,48 +180,72 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     }
 
     setIsSaving(true);
-    let patientToUse = selectedPatient;
-    const isActuallyInFirestore = allPatientsFromContext.some(p => p.id === selectedPatient.id);
+    let patientToOperateOnId = selectedPatient.id; // Store the ID for potential re-fetching
+    const isTemporaryPatient = selectedPatient.id.startsWith('temp-appointment-');
+    const isActuallyInFirestore = allPatientsFromContext.some(p => p.id === selectedPatient.id && !p.id.startsWith('temp-appointment-'));
+
+    const currentPatientHistoryFromForm = form.getValues('patientHistory');
+    const prescriptionText = formatPrescriptionForSaving(
+        editedSuggestion,
+        currentSuggestionData.symptoms,
+        currentSuggestionData.diagnosis
+    );
 
     try {
-      if (!isActuallyInFirestore && selectedPatient.id.startsWith('temp-appointment-')) {
-        const { id, ...patientDataToSave } = selectedPatient; 
-         if (!patientDataToSave.name || !patientDataToSave.diagnosis) {
+      if (isTemporaryPatient && !isActuallyInFirestore) {
+        // This is a temporary patient, create a new record in Firestore
+        const { id, prescriptions, createdAt, displayActivityTimestamp, ...patientDataToSaveBase } = selectedPatient;
+        const newPatientData = {
+            ...patientDataToSaveBase, // name, age, diagnosis
+            history: currentPatientHistoryFromForm || '', // Use history from form
+        };
+
+        if (!newPatientData.name || !newPatientData.diagnosis) {
             toast({ title: "Missing Info", description: "Cannot save temporary patient without name and diagnosis.", variant: "destructive" });
             setIsSaving(false);
             return;
         }
-        const newSavedPatient = await addPatient(patientDataToSave as Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]});
-        patientToUse = newSavedPatient;
-        await refreshPatients(); 
-        if (onPatientRecordUpdated) {
-            onPatientRecordUpdated(newSavedPatient); 
-        }
+        
+        const newSavedPatient = await addPatient(newPatientData as Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]});
+        patientToOperateOnId = newSavedPatient.id; // Update ID to the newly created patient's ID
+
         toast({
           title: "Patient Record Created",
-          description: `${newSavedPatient.name}'s record has been saved to the system.`,
-          className: "bg-primary text-primary-foreground",
+          description: `${newSavedPatient.name}'s record has been saved.`,
         });
+      } else {
+        // Existing patient, update their history
+        await updatePatient(patientToOperateOnId, { history: currentPatientHistoryFromForm });
       }
 
-      const prescriptionText = formatPrescriptionForSaving(
-        editedSuggestion, 
-        currentSuggestionData.symptoms, 
-        currentSuggestionData.diagnosis 
-      );
-      await addPrescriptionToPatient(patientToUse.id, prescriptionText);
+      // Add the prescription to the patient (either newly created or existing)
+      await addPrescriptionToPatient(patientToOperateOnId, prescriptionText);
       
-      if (onPatientRecordUpdated) {
-         const updatedPatientWithPrescription = {
-            ...patientToUse,
-            prescriptions: [...(patientToUse.prescriptions || []), prescriptionText]
-         };
-         onPatientRecordUpdated(updatedPatientWithPrescription);
+      // All async operations are done. AppStateContext should have triggered refreshes.
+      // Fetch the latest state of the patient from the context for the UI update.
+      // We wait a brief moment to allow context to potentially update from Firestore triggers/fetches
+      await new Promise(resolve => setTimeout(resolve, 200)); // Small delay for context propagation
+
+      const finalRefreshedPatient = allPatientsFromContext.find(p => p.id === patientToOperateOnId);
+
+      if (finalRefreshedPatient && onPatientRecordUpdated) {
+        onPatientRecordUpdated(finalRefreshedPatient);
+      } else if (onPatientRecordUpdated) {
+        // Fallback if not found in context immediately (should be rare)
+        console.warn("Patient not immediately found in context after save, constructing fallback for UI.");
+        const fallbackPatientData = {
+            ...selectedPatient, // Original selected patient data
+            id: patientToOperateOnId, // Ensure correct ID
+            history: currentPatientHistoryFromForm,
+            prescriptions: [...(selectedPatient.prescriptions || []), prescriptionText],
+            // displayActivityTimestamp might be stale here for new patients
+        };
+        onPatientRecordUpdated(fallbackPatientData);
       }
 
       toast({
         title: "Prescription Saved",
-        description: `The prescription has been saved to ${patientToUse.name}'s record.`,
+        description: `The prescription has been saved to ${selectedPatient.name}'s record. History also updated.`,
         className: "bg-primary text-primary-foreground",
       });
 
@@ -230,7 +253,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         console.error("Error saving prescription or patient:", error);
         toast({
             title: "Save Error",
-            description: "Failed to save prescription or patient record. Please try again.",
+            description: `Failed to save. ${(error as Error)?.message || 'Please try again.'}`,
             variant: "destructive",
         });
     } finally {

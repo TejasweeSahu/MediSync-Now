@@ -367,12 +367,8 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isAISuggesting || !selectedPatient || isSaving}>
-              {isAISuggesting ? ( 
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              {isAISuggesting ? 'Generating...' : 'Suggest New / Refine'}
+              <Sparkles className="mr-2 h-4 w-4" />
+              Suggest New / Refine
             </Button>
           </CardFooter>
         </form>

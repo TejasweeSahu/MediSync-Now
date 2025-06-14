@@ -16,6 +16,7 @@ const SuggestPrescriptionInputSchema = z.object({
   symptoms: z.string().describe('The symptoms presented by the patient.'),
   diagnosis: z.string().describe('The diagnosis of the patient.'),
   patientHistory: z.string().optional().describe('The medical history of the patient, if available.'),
+  priorPrescriptions: z.string().optional().describe('A summary or list of prior prescriptions for the patient, if available. This can help avoid re-prescribing similar medications or identify patterns.'),
   doctorName: z.string().optional().describe("The name of the doctor for whom this suggestion is being generated."),
   doctorPreferences: z.string().optional().describe('Specific prescribing preferences or common patterns for this doctor, if known.'),
 });
@@ -36,7 +37,7 @@ const SuggestPrescriptionOutputSchema = z.object({
     .min(1, { message: "At least one medication should be suggested if a prescription is warranted."}),
   generalInstructions: z.string().optional().describe('General advice or instructions applicable to the overall treatment plan or patient well-being (e.g., "Rest and stay hydrated", "Monitor blood pressure daily"). Do not repeat medication-specific instructions here.'),
   followUp: z.string().optional().describe('Recommendations for follow-up care or monitoring (e.g., "Follow up in 2 weeks if no improvement", "Return if fever exceeds 102°F", "Routine check-up in 3 months").'),
-  additionalNotes: z.string().optional().describe('Any other important notes, warnings, contraindications, or considerations for the doctor regarding this prescription suggestion. This can include potential interactions if known from patient history.'),
+  additionalNotes: z.string().optional().describe('Any other important notes, warnings, contraindications, or considerations for the doctor regarding this prescription suggestion. This can include potential interactions if known from patient history or prior prescriptions.'),
 });
 export type SuggestPrescriptionOutput = z.infer<typeof SuggestPrescriptionOutputSchema>;
 
@@ -49,12 +50,16 @@ const prompt = ai.definePrompt({
   input: {schema: SuggestPrescriptionInputSchema},
   output: {schema: SuggestPrescriptionOutputSchema},
   prompt: `You are an AI assistant specialized in suggesting prescriptions for {{#if doctorName}}Dr. {{{doctorName}}}{{else}}the attending doctor{{/if}}.
-Given the patient's symptoms, diagnosis, and medical history, provide a structured prescription suggestion.
+Given the patient's symptoms, diagnosis, medical history, and prior prescriptions, provide a structured prescription suggestion.
 
 Patient Details:
 Symptoms: {{{symptoms}}}
 Diagnosis: {{{diagnosis}}}
 Patient History: {{{patientHistory}}}
+{{#if priorPrescriptions}}
+Prior Prescriptions:
+{{{priorPrescriptions}}}
+{{/if}}
 {{#if doctorName}}
 Doctor: Dr. {{{doctorName}}}
 {{/if}}
@@ -69,9 +74,9 @@ Provide the prescription in a structured format as defined by the output schema.
     *   If no medication is appropriate, provide an empty array for medications and explain why in 'additionalNotes'.
 2.  **General Instructions**: Provide any overall advice for the patient not specific to a single medication (e.g., "Increase fluid intake", "Get plenty of rest").
 3.  **Follow Up**: Suggest when and under what conditions the patient should seek follow-up care.
-4.  **Additional Notes**: Include any critical warnings, potential interactions based on patient history, contraindications, or other important considerations for the prescribing doctor.
+4.  **Additional Notes**: Include any critical warnings, potential interactions based on patient history or prior prescriptions, contraindications, or other important considerations for the prescribing doctor.
 
-Consider potential allergies, interactions, or contraindications when formulating the suggestion.
+Consider potential allergies, interactions, or contraindications when formulating the suggestion, especially in light of prior prescriptions.
 Ensure all suggested fields in the output schema are populated appropriately.
 If suggesting multiple medications, ensure they are compatible.
 Base your suggestions on standard medical practices.

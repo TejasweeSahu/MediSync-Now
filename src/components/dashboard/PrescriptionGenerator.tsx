@@ -69,7 +69,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         selectedPatient.history === defaultHistoryMessage &&
         selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0
       ) {
-        historyForForm = '';
+        historyForForm = ''; // Clear history if it's the default message AND there are prior prescriptions
       }
 
       form.reset({
@@ -96,10 +96,16 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     setCurrentSuggestionData(null);
     setEditedSuggestion(null);
     try {
+      let priorPrescriptionsString: string | undefined = undefined;
+      if (selectedPatient && selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0) {
+        priorPrescriptionsString = selectedPatient.prescriptions.join('\n\n---\n\n'); // Join with a clear separator
+      }
+
       const aiInput: SuggestPrescriptionInput = {
         symptoms: data.symptoms,
         diagnosis: data.diagnosis,
         patientHistory: data.patientHistory || 'N/A',
+        priorPrescriptions: priorPrescriptionsString,
         doctorName: doctor?.name,
       };
       const result = await suggestPrescription(aiInput);
@@ -377,8 +383,8 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isAISuggesting || !selectedPatient || isSaving}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Suggest New / Refine
+              {isAISuggesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              {isAISuggesting ? 'Generating...' : 'Suggest New / Refine'}
             </Button>
           </CardFooter>
         </form>
@@ -551,3 +557,4 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
+

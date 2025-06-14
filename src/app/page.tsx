@@ -2,12 +2,16 @@
 'use client';
 
 import Link from 'next/link';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/shared/Logo';
-import { Stethoscope, Users } from 'lucide-react';
+import { Stethoscope, Users, Loader2 } from 'lucide-react';
 
 export default function HomePage() {
+  const [isFrontDeskLoading, setIsFrontDeskLoading] = useState(false);
+  const [isDoctorLoginLoading, setIsDoctorLoginLoading] = useState(false);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
       <div className="mb-12 text-center">
@@ -27,10 +31,19 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/front-desk" passHref>
-              <Button className="w-full text-lg py-6" size="lg">
-                Access Front Desk
-              </Button>
+            <Link href="/front-desk" passHref legacyBehavior>
+              <a onClick={() => setIsFrontDeskLoading(true)} className="w-full">
+                <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
+                  {isFrontDeskLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Access Front Desk"
+                  )}
+                </Button>
+              </a>
             </Link>
           </CardContent>
         </Card>
@@ -46,10 +59,19 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/login" passHref>
-              <Button className="w-full text-lg py-6" size="lg">
-                Doctor Login
-              </Button>
+            <Link href="/login" passHref legacyBehavior>
+              <a onClick={() => setIsDoctorLoginLoading(true)} className="w-full">
+                <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
+                  {isDoctorLoginLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Doctor Login"
+                  )}
+                </Button>
+              </a>
             </Link>
           </CardContent>
         </Card>

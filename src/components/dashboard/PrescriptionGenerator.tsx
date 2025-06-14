@@ -62,10 +62,20 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
   useEffect(() => {
     if (selectedPatient) {
+      let historyForForm = selectedPatient.history || '';
+      const defaultHistoryMessage = "Patient details loaded from appointment. Verify and complete medical history. This is not a saved patient record yet.";
+
+      if (
+        selectedPatient.history === defaultHistoryMessage &&
+        selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0
+      ) {
+        historyForForm = '';
+      }
+
       form.reset({
         symptoms: selectedPatient.diagnosis || '', 
         diagnosis: selectedPatient.diagnosis || '',
-        patientHistory: selectedPatient.history || '',
+        patientHistory: historyForForm,
       });
       setCurrentSuggestionData(null); 
       setEditedSuggestion(null);
@@ -541,4 +551,3 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     </Card>
   );
 };
-

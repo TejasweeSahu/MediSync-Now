@@ -11,12 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff, KeyRound, User, Mail, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { defaultDoctor } from '@/data/mockData'; // To get a default email for placeholder
+import { Logo } from '@/components/shared/Logo';
 
 export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState<string>(defaultDoctor.email); // Default to a mock doctor's email
-  const [password, setPassword] = useState<string>('password1'); // Default password for dev
+  const [password, setPassword] = useState<string>('password1'); // Default password
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
   const { login, sendPasswordReset } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -26,17 +28,15 @@ export const LoginForm: React.FC = () => {
     setIsLoading(true);
     try {
       await login(email, password);
-      // AuthContext's onAuthStateChanged will set isLoading to false and redirect if successful.
-      // Router push will happen via AppShell or HomePage due to auth state change.
-      // We show a success toast here as direct feedback from login action.
       toast({
         title: "Login Successful",
         description: `Welcome back! Redirecting to dashboard...`,
       });
-      // The redirection is handled by the root page or AppShell based on isAuthenticated.
-      // Explicit router.push('/dashboard') here might be redundant if page.tsx handles it,
-      // but can be kept if direct navigation post-login is desired immediately.
-      router.push('/dashboard'); 
+      setIsRedirecting(true); // Trigger full page loading animation
+      // The actual router.push will happen, but the redirecting UI takes over first.
+      // Let's ensure router.push is called to initiate the navigation.
+      // The AppShell or dashboard page itself will handle final display.
+      router.push('/dashboard');
     } catch (error: any) {
       console.error("Firebase login error:", error);
       let errorMessage = "Login failed. Please check your credentials.";
@@ -62,9 +62,9 @@ export const LoginForm: React.FC = () => {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is false on error
     }
+    // No finally block for setIsLoading(false) here, as isRedirecting takes over on success.
   };
 
   const handlePasswordReset = async () => {
@@ -100,6 +100,23 @@ export const LoginForm: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  if (isRedirecting) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-secondary p-4">
+        <div className="mb-10">
+            <Logo iconSize={48} textSize="text-5xl" />
+        </div>
+        <Card className="w-full max-w-md shadow-xl py-10">
+            <CardContent className="flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg font-medium text-foreground">Redirecting to your dashboard...</p>
+                <p className="text-sm text-muted-foreground">Please wait a moment.</p>
+            </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
 
   return (
@@ -161,8 +178,14 @@ export const LoginForm: React.FC = () => {
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full text-base py-6" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Login
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
           </Button>
         </CardFooter>
       </form>

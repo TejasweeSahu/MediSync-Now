@@ -26,7 +26,7 @@ import { format as formatDateFn } from 'date-fns';
 const formSchema = z.object({
   symptoms: z.string().min(10, { message: "Symptoms must be at least 10 characters." }),
   diagnosis: z.string().min(5, { message: "Diagnosis must be at least 5 characters." }),
-  patientHistory: z.string().optional(),
+  patientHistory: z.string().optional(), // This field is for NEW entries to be appended
 });
 
 type PrescriptionFormValues = z.infer<typeof formSchema>;
@@ -56,39 +56,26 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     defaultValues: {
       symptoms: '',
       diagnosis: '',
-      patientHistory: '',
+      patientHistory: '', // Initialize as empty for new entries
     },
   });
 
   useEffect(() => {
     if (selectedPatient) {
-      let historyForForm = selectedPatient.history || '';
-      const defaultHistoryMessage = "Patient details loaded from appointment. Verify and complete medical history. This is not a saved patient record yet.";
-
-      if (
-        selectedPatient.history === defaultHistoryMessage &&
-        selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0
-      ) {
-        historyForForm = ''; 
-      }
-
       form.reset({
         symptoms: selectedPatient.diagnosis || '', 
         diagnosis: selectedPatient.diagnosis || '',
-        patientHistory: historyForForm,
+        patientHistory: '', // Always start with an empty field for new history entries
       });
       setCurrentSuggestionData(null); 
       setEditedSuggestion(null);
-      // Keep isAISuggesting and isSaving as they are, they manage active processes.
     } else {
       form.reset({ symptoms: '', diagnosis: '', patientHistory: '' });
       setCurrentSuggestionData(null);
       setEditedSuggestion(null);
-      // setIsAISuggesting(false); // Only reset if needed, typically on deselection.
-      // setIsSaving(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPatient]); // form.reset is stable
+  }, [selectedPatient]); 
 
   const handleGenerateSuggestion: SubmitHandler<PrescriptionFormValues> = async (data) => {
     setIsAISuggesting(true);
@@ -103,7 +90,8 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
       const aiInput: SuggestPrescriptionInput = {
         symptoms: data.symptoms,
         diagnosis: data.diagnosis,
-        patientHistory: data.patientHistory || 'N/A',
+        // Send the full existing history (if any) to the AI for context, not just the new entry from the form
+        patientHistory: selectedPatient?.history || 'N/A', 
         priorPrescriptions: priorPrescriptionsString,
         doctorName: doctor?.name,
       };
@@ -180,11 +168,27 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
     }
 
     setIsSaving(true);
-    let patientToOperateOnId = selectedPatient.id; // Store the ID for potential re-fetching
+    let patientToOperateOnId = selectedPatient.id; 
     const isTemporaryPatient = selectedPatient.id.startsWith('temp-appointment-');
     const isActuallyInFirestore = allPatientsFromContext.some(p => p.id === selectedPatient.id && !p.id.startsWith('temp-appointment-'));
 
-    const currentPatientHistoryFromForm = form.getValues('patientHistory');
+    const newHistoryEntryFromForm = form.getValues('patientHistory')?.trim();
+    let finalHistoryForSave = selectedPatient.history || '';
+    const defaultHistoryMessage = "Patient details loaded from appointment. Verify and complete medical history. This is not a saved patient record yet.";
+
+    if (newHistoryEntryFromForm) {
+      if (finalHistoryForSave === defaultHistoryMessage || !finalHistoryForSave.trim()) {
+        // If existing history is the default message or empty, the new entry becomes the history.
+        finalHistoryForSave = newHistoryEntryFromForm;
+      } else {
+        // Append new entry to existing, non-default, non-empty history
+        const timestamp = formatDateFn(new Date(), "yyyy-MM-dd 'at' HH:mm");
+        finalHistoryForSave += `\n\n--- Added on ${timestamp} ---\n${newHistoryEntryFromForm}`;
+      }
+    }
+    // If newHistoryEntryFromForm is empty, finalHistoryForSave remains as selectedPatient.history.
+
+
     const prescriptionText = formatPrescriptionForSaving(
         editedSuggestion,
         currentSuggestionData.symptoms,
@@ -193,11 +197,10 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
 
     try {
       if (isTemporaryPatient && !isActuallyInFirestore) {
-        // This is a temporary patient, create a new record in Firestore
         const { id, prescriptions, createdAt, displayActivityTimestamp, ...patientDataToSaveBase } = selectedPatient;
         const newPatientData = {
-            ...patientDataToSaveBase, // name, age, diagnosis
-            history: currentPatientHistoryFromForm || '', // Use history from form
+            ...patientDataToSaveBase,
+            history: finalHistoryForSave, 
         };
 
         if (!newPatientData.name || !newPatientData.diagnosis) {
@@ -207,45 +210,39 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         }
         
         const newSavedPatient = await addPatient(newPatientData as Omit<Patient, 'id' | 'prescriptions' | 'createdAt' | 'displayActivityTimestamp'> & {prescriptions?: string[]});
-        patientToOperateOnId = newSavedPatient.id; // Update ID to the newly created patient's ID
+        patientToOperateOnId = newSavedPatient.id;
 
         toast({
           title: "Patient Record Created",
           description: `${newSavedPatient.name}'s record has been saved.`,
         });
       } else {
-        // Existing patient, update their history
-        await updatePatient(patientToOperateOnId, { history: currentPatientHistoryFromForm });
+        await updatePatient(patientToOperateOnId, { history: finalHistoryForSave });
       }
 
-      // Add the prescription to the patient (either newly created or existing)
       await addPrescriptionToPatient(patientToOperateOnId, prescriptionText);
       
-      // All async operations are done. AppStateContext should have triggered refreshes.
-      // Fetch the latest state of the patient from the context for the UI update.
-      // We wait a brief moment to allow context to potentially update from Firestore triggers/fetches
-      await new Promise(resolve => setTimeout(resolve, 200)); // Small delay for context propagation
+      await new Promise(resolve => setTimeout(resolve, 200)); 
 
-      const finalRefreshedPatient = allPatientsFromContext.find(p => p.id === patientToOperateOnId);
+      const finalRefreshedPatientContext = allPatientsFromContext.find(p => p.id === patientToOperateOnId);
 
-      if (finalRefreshedPatient && onPatientRecordUpdated) {
-        onPatientRecordUpdated(finalRefreshedPatient);
+      if (finalRefreshedPatientContext && onPatientRecordUpdated) {
+         const patientForUiUpdate = { ...finalRefreshedPatientContext, history: finalHistoryForSave, prescriptions: [...(finalRefreshedPatientContext.prescriptions || []), prescriptionText] };
+        onPatientRecordUpdated(patientForUiUpdate);
       } else if (onPatientRecordUpdated) {
-        // Fallback if not found in context immediately (should be rare)
         console.warn("Patient not immediately found in context after save, constructing fallback for UI.");
         const fallbackPatientData = {
-            ...selectedPatient, // Original selected patient data
-            id: patientToOperateOnId, // Ensure correct ID
-            history: currentPatientHistoryFromForm,
+            ...selectedPatient, 
+            id: patientToOperateOnId, 
+            history: finalHistoryForSave, 
             prescriptions: [...(selectedPatient.prescriptions || []), prescriptionText],
-            // displayActivityTimestamp might be stale here for new patients
         };
         onPatientRecordUpdated(fallbackPatientData);
       }
 
       toast({
         title: "Prescription Saved",
-        description: `The prescription has been saved to ${selectedPatient.name}'s record. History also updated.`,
+        description: `The prescription and any new history notes have been saved to ${selectedPatient.name}'s record.`,
         className: "bg-primary text-primary-foreground",
       });
 
@@ -320,7 +317,7 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
         </CardTitle>
         <CardDescription>
           {selectedPatient ? `Review or generate a new prescription suggestion for ${selectedPatient.name}.` : "Select a patient to get started."}
-          {" For new suggestions, please ensure current symptoms and diagnosis are accurately entered below. You can edit the AI's suggestion before saving."}
+          {" For new suggestions, please ensure current symptoms and diagnosis are accurately entered below. You can edit the AI's suggestion before saving. Add any new history notes in the 'Relevant Patient History' field."}
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -341,9 +338,27 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
                   </AlertDescription>
                 </Alert>
 
+                {selectedPatient.history && selectedPatient.history.trim() !== '' && selectedPatient.history !== "Patient details loaded from appointment. Verify and complete medical history. This is not a saved patient record yet." && (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="patient-history">
+                      <AccordionTrigger>
+                        <div className="flex items-center gap-2 text-sm">
+                            <History className="h-4 w-4 text-muted-foreground" />
+                            View Full Patient History
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="text-xs p-3 border rounded-md bg-background whitespace-pre-wrap max-h-48 overflow-y-auto">
+                          {selectedPatient.history}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+                
                 {selectedPatient.prescriptions && selectedPatient.prescriptions.length > 0 && (
                   <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1">
+                    <AccordionItem value="prior-prescriptions">
                       <AccordionTrigger>
                         <div className="flex items-center gap-2 text-sm">
                             <History className="h-4 w-4 text-muted-foreground" />
@@ -392,12 +407,12 @@ export const PrescriptionGenerator: React.FC<PrescriptionGeneratorProps> = ({ se
             />
             <FormField
               control={form.control}
-              name="patientHistory"
+              name="patientHistory" // This field is for NEW entries
               render={({ field }) => (
                 <FormItem>
-                  <Label className="font-medium">Relevant Patient History (Optional)</Label>
+                  <Label className="font-medium">Add New Patient History Notes (Optional)</Label>
                   <FormControl>
-                    <Textarea placeholder="e.g., Allergic to penicillin, history of asthma..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
+                    <Textarea placeholder="Enter any new notes, observations, or updates to patient history..." {...field} rows={2} disabled={isAISuggesting || isSaving}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

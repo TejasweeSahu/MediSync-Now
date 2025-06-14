@@ -31,19 +31,21 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/front-desk" passHref legacyBehavior>
-              <a onClick={() => setIsFrontDeskLoading(true)} className="w-full">
-                <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
-                  {isFrontDeskLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Access Front Desk"
-                  )}
-                </Button>
-              </a>
+            <Link
+              href="/front-desk"
+              onClick={() => setIsFrontDeskLoading(true)}
+              className="w-full"
+            >
+              <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
+                {isFrontDeskLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Access Front Desk"
+                )}
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -59,19 +61,21 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/login" passHref legacyBehavior>
-              <a onClick={() => setIsDoctorLoginLoading(true)} className="w-full">
-                <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
-                  {isDoctorLoginLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Doctor Login"
-                  )}
-                </Button>
-              </a>
+            <Link
+              href="/login"
+              onClick={() => setIsDoctorLoginLoading(true)}
+              className="w-full"
+            >
+              <Button className="w-full text-lg py-6" size="lg" disabled={isFrontDeskLoading || isDoctorLoginLoading}>
+                {isDoctorLoginLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Doctor Login"
+                )}
+              </Button>
             </Link>
           </CardContent>
         </Card>

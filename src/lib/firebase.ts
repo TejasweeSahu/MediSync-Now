@@ -1,19 +1,35 @@
-
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-// TODO: Replace with your actual Firebase project configuration
-// You can find this in your Firebase project settings.
+// Firebase configuration is now loaded from environment variables
+// Ensure you have a .env.local file (or .env for general development)
+// with these variables set.
+// Example .env.local:
+// NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key_here
+// NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain_here
+// NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id_here
+// NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket_here
+// NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id_here
+// NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id_here
+
 const firebaseConfig = {
-  apiKey: "AIzaSyClSwmAN98FBNcbynCB_VAAGzsQk23moAM", // Replace with your actual apiKey
-  authDomain: "medisync-now.firebaseapp.com", // Replace with your actual authDomain
-  projectId: "medisync-now", // Replace with your actual projectId
-  storageBucket: "medisync-now.firebasestorage.app", // Replace with your actual storageBucket
-  messagingSenderId: "1001251139142", // Replace with your actual messagingSenderId
-  appId: "1:1001251139142:web:ed21c0f7f28b32e0212447" // Replace with your actual appId
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
+
+// Basic validation to ensure environment variables are loaded
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error("Firebase configuration environment variables are not set. Please check your .env file.");
+  // You might want to throw an error here or handle it more gracefully
+  // depending on your application's needs.
+}
+
 
 // Initialize Firebase
 let app: FirebaseApp;

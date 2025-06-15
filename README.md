@@ -48,7 +48,6 @@ This is a Next.js application built with Firebase Studio, designed to simulate a
         # GOOGLE_API_KEY=YOUR_GOOGLE_GENERATIVE_AI_API_KEY_HERE
         ```
     *   Replace the `YOUR_..._HERE` placeholders with your actual Firebase project configuration values (from your Firebase project settings > General) and any necessary AI service API keys.
-    *   **SECURITY WARNING:** If your Firebase Web API key was previously committed and exposed (e.g., on GitHub), it is **STRONGLY RECOMMENDED** that you go to your Firebase project settings (Project settings > General > Your apps > SDK setup and configuration) and **rotate your API key**. Update your `.env.local` file with the new key.
     *   Ensure your `.env.local` or `.env` file is listed in your `.gitignore` file to prevent committing sensitive credentials. Standard Next.js projects usually include `.env*.local` in `.gitignore`.
 
 4.  **Firebase Project Setup (if not already done):**
@@ -148,7 +147,6 @@ This is a Next.js application built with Firebase Studio, designed to simulate a
 
 *   **Security:**
     *   **Environment Variables:** Never commit your `.env.local` or `.env` file containing sensitive API keys to version control.
-    *   **Firebase API Key Rotation:** If your Firebase Web API key was ever exposed, rotate it immediately in your Firebase console.
     *   **Firestore Security Rules:** The default Firestore rules provided are for development convenience. **Always secure your database with appropriate rules before deploying to a production environment.**
 *   **Mock Data:** The application uses mock doctor data (`src/data/mockData.ts`) and can seed initial patient data into Firestore.
 *   **AI Model Configuration:** AI features rely on Genkit and configured models (e.g., Gemini). Ensure your environment variables are set up if API keys are required for the chosen models. The default Genkit model is specified in `src/ai/genkit.ts`.

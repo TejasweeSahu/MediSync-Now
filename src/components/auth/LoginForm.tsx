@@ -10,15 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, KeyRound, Mail, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { defaultDoctor } from '@/data/mockData'; // To get a default email for placeholder
-// Removed Logo import as it's not used in the redirecting state anymore
+// Removed defaultDoctor import as it's no longer used for pre-filling email
 
 export const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState<string>(defaultDoctor.email);
-  const [password, setPassword] = useState<string>('password1');
+  const [email, setEmail] = useState<string>(''); // Changed from defaultDoctor.email
+  const [password, setPassword] = useState<string>(''); // Changed from 'password1'
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // Removed isRedirecting state
   const { login, sendPasswordReset } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -32,8 +30,6 @@ export const LoginForm: React.FC = () => {
         title: "Login Successful",
         description: `Welcome back! Redirecting to dashboard...`,
       });
-      // The router.push will initiate navigation.
-      // The DashboardPage will handle its own loading state.
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Firebase login error:", error);
@@ -60,9 +56,8 @@ export const LoginForm: React.FC = () => {
         description: errorMessage,
         variant: "destructive",
       });
-      setIsLoading(false); // Ensure loading is false on error
+      setIsLoading(false);
     }
-    // On success, isLoading remains true while the component unmounts and DashboardPage takes over.
   };
 
   const handlePasswordReset = async () => {
@@ -99,7 +94,6 @@ export const LoginForm: React.FC = () => {
     }
   };
 
-  // Removed the 'isRedirecting' block
 
   return (
     <Card className="w-full max-w-md shadow-xl">

@@ -38,7 +38,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI assistant helping a front desk operator book medical appointments.
 Your task is to parse the provided voice transcript and extract the following details:
 - Patient's full name (patientName)
-- Patient's age as a number (patientAge). If age is mentioned, it MUST be a number. If no age is mentioned, or if it's not clearly a number (e.g., "thirty"), omit the patientAge field.
+- Patient's age as a number (patientAge). Actively look for a numerical value directly associated with age (e.g., "age 42", "7 years old", "he's ten", "thirty"). The extracted age MUST be a number. If no number is clearly stated as the age, or if it is ambiguous (e.g. "in his thirties" without a specific number), omit the patientAge field.
 - Patient's symptoms (symptoms)
 - The name or part of the name of the doctor the patient wants to see (doctorQuery). Try to extract just the doctor's name (e.g., "Jones", "Alisha Mehta"). Avoid titles like "Dr." if possible.
 - The desired appointment date (appointmentDateYYYYMMDD)
@@ -52,7 +52,12 @@ Current Date (for reference): {{{currentDate}}}
 Guidelines for extraction:
 - Review the ENTIRE transcript. Prioritize extracting key appointment details for all requested fields (patientName, patientAge, symptoms, doctorQuery, appointmentDateYYYYMMDD, appointmentTimeHHMM) if clearly present. Aim for both accuracy and reasonable speed.
 - If a piece of information is not clearly mentioned or is ambiguous, omit that specific field or return it as undefined. Do not guess or infer information that isn't stated.
-- For patientAge: Extract only if a number is explicitly stated for age (e.g., "30", "thirty five"). Do not infer. If "30 years old" is said, extract 30. If "five" is said for age, extract 5. If "I am thirty" is said, extract 30. If no age or an ambiguous age is mentioned, omit patientAge.
+- For patientAge:
+  - If the transcript explicitly mentions the word "age" followed by a number (e.g., "age 42", "age is thirty-five"), extract that number.
+  - If phrases like "X years old" or "is X" (where X is a number and context implies age, like "he's ten" or "I am twenty five") are used, extract the number.
+  - Convert written-out numbers (e.g., "ten", "forty-five") to digits if they clearly refer to an age.
+  - The extracted age MUST be a numerical value. If a number is present near an age-related term but its role as 'age' is uncertain, prioritize clarity; if ambiguous, omit the field.
+  - If no explicit number for age is found, or if the context is vague (e.g., "he's in his forties" without a specific number like "he's 45"), omit the patientAge field. Do not guess or infer age without a clear numerical mention.
 - For doctorQuery: Focus on the doctor's actual name (e.g., "Peterson", "Mehta"). Avoid titles like "Dr." if possible (e.g., for "Dr. Peterson", "Peterson" is preferred).
 - For appointmentDateYYYYMMDD:
   - Convert relative dates like "today", "tomorrow", "next Monday" into YYYY-MM-DD format based on the provided 'currentDate'.

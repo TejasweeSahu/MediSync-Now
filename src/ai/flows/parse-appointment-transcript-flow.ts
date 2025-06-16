@@ -95,6 +95,17 @@ Output:
   appointmentDateYYYYMMDD: "2024-07-29" (example, actual day depends on AI logic for "next week")
   appointmentTimeHHMM: "14:00"
 
+Example 4:
+Transcript: "Patient name Rohit Sharma, Age 34, Symptoms are cough and fever, With Doctor Alisha Mehta on June 20th, 4 PM."
+Current Date: "2024-06-18"
+Output:
+ patientName: "Rohit Sharma"
+ patientAge: 34
+ symptoms: "cough and fever"
+ doctorQuery: "Alisha Mehta"
+ appointmentDateYYYYMMDD: "2024-06-20"
+ appointmentTimeHHMM: "16:00"
+
 
 Focus on extracting the information as accurately as possible based on the transcript and current date, while being efficient.
 `,
